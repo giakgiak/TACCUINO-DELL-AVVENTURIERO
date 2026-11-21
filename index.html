@@ -163,6 +163,19 @@ details.it>summary .t.tt{display:grid;gap:1px;white-space:normal}
 .cmb{display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--surface)}
 .cmb.cur{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
 .cmb.down{opacity:.55}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr));gap:12px}
+.mcard{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:12px;display:grid;gap:8px;min-width:0}
+.mcard.down{border-color:var(--hp-low)}
+.mcard h3{margin:0;font-size:1.05rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mstats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;text-align:center}
+.mstats div{background:var(--sunk);border-radius:7px;padding:4px 2px;min-width:0}
+.mstats b{display:block;font:700 1.05rem var(--f-num)}
+.mstats small{font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.msaves{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;text-align:center;font-size:.78rem}
+.msaves span{background:var(--sunk);border-radius:6px;padding:2px 0}
+.msaves span.pr{outline:1px solid var(--accent)}
+.mcard .dmg{display:flex;gap:4px;align-items:center}
+.mcard .dmg input{width:64px}
 .cmb .ini{font:700 1.2rem var(--f-num);text-align:center;background:var(--sunk);border-radius:7px;padding:4px}
 .cmb .ini input{text-align:center;padding:2px;font:700 1rem var(--f-num);background:transparent;border:0}
 .cmb .dmg{display:flex;gap:4px;align-items:center}
@@ -225,6 +238,7 @@ details.it>summary .t.tt{display:grid;gap:1px;white-space:normal}
 <div id="toast" class="toast" hidden></div>
 <div id="modal" class="modal-bg" hidden></div>
 <input type="file" id="file-import" accept="application/json,.json" hidden>
+<input type="file" id="file-char" accept="application/json,.json" multiple hidden>
 
 <script>
 (()=>{
@@ -237,7 +251,7 @@ const CONDITIONS=["Accecato","Affascinato","Afferrato","Assordato","Avvelenato",
 const COINS=[["mp","Platino",10],["mo","Oro",1],["me","Electrum",.5],["ma","Argento",.1],["mr","Rame",.01]];
 const SCHOOLS=["","Abiurazione","Ammaliamento","Divinazione","Evocazione","Illusione","Invocazione","Necromanzia","Trasmutazione"];
 const QSTATUS={attiva:"Attiva",completata:"Completata",fallita:"Fallita",sospesa:"In sospeso"};
-const TABS=[["scheda","Scheda"],["inventario","Inventario"],["capacita","Capacità"],["magie","Magie"],["combattimento","Combattimento"],["missioni","Missioni"],["diario","Diario"],["mondo","PNG e luoghi"]];
+const TABS=[["scheda","Scheda"],["inventario","Inventario"],["capacita","Capacità"],["magie","Magie"],["combattimento","Combattimento"],["master","Master"],["missioni","Missioni"],["diario","Diario"],["mondo","PNG e luoghi"]];
 
 
 /* ============ dati del Manuale del Giocatore (5e) ============ */
@@ -525,7 +539,7 @@ function renderView(){
   if(!k){v.innerHTML=`<div class="card"><h2>Nessuna campagna</h2><button class="btn pri" data-a="new-camp">Crea campagna</button></div>`;return}
   const charTabs=["scheda","inventario","capacita","magie"];
   if(charTabs.includes(UI.tab)&&!c){v.innerHTML=`<div class="card"><h2>Nessun personaggio in questa campagna</h2><p class="muted">Aggiungi il tuo eroe per usare scheda, inventario, capacità e magie.</p><div><button class="btn pri" data-a="new-char">Nuovo personaggio</button></div></div>`;return}
-  v.innerHTML=({scheda:vScheda,inventario:vInv,capacita:vCap,magie:vMagie,combattimento:vCombat,missioni:vQuest,diario:vDiario,mondo:vMondo}[UI.tab]||vScheda)();
+  v.innerHTML=({scheda:vScheda,inventario:vInv,capacita:vCap,magie:vMagie,combattimento:vCombat,master:vMaster,missioni:vQuest,diario:vDiario,mondo:vMondo}[UI.tab]||vScheda)();
   v.querySelectorAll("details[data-id]").forEach(d=>d.addEventListener("toggle",()=>{d.open?UI.open.add(d.dataset.id):UI.open.delete(d.dataset.id)}));
 }
 const isOpen=id=>UI.open.has(id)?"open":"";
@@ -770,6 +784,41 @@ function vCombat(){
   </section>`;
 }
 
+/* ---- Master ---- */
+function slotsLeft(c){const out=[];for(let i=1;i<=9;i++){const s=c.slots[i];if(s&&Number(s.max)>0)out.push(`${i}°: ${Math.max(0,s.max-s.used)}/${s.max}`)}return out}
+function vMaster(){
+  const k=camp();const L=k.chars;
+  const cards=L.map(c=>{const p=hpPct(c);const dead=c.hp.cur<=0;const sl=slotsLeft(c);const caster=sl.length>0||c.spells.length>0;
+    const tags=[...c.conditions.map(x=>`<span class="tag acc">${esc(x)}</span>`),c.exhaustion>0?`<span class="tag acc">Esaurimento ${c.exhaustion}</span>`:"",c.concentration?`<span class="tag gold">◎ ${esc(c.concentration)}</span>`:"",c.inspiration?`<span class="tag gold">Ispirazione</span>`:"",...c.effects.map(e=>`<span class="tag">${esc(e.name)}${e.rounds?` ${e.rounds}r`:""}</span>`),dead?`<span class="tag acc">TS morte ✓${c.death.s} ✗${c.death.f}</span>`:""].join("");
+    return `<div class="mcard ${dead?"down":""}">
+      <div style="min-width:0"><h3>${esc(c.name)}</h3>
+        <div class="muted" style="font-size:.82rem">${esc([c.race,[c.cls,c.subclass].filter(Boolean).join(" · "),"liv. "+c.level].filter(Boolean).join(" · "))}${c.player?` — <b>${esc(c.player)}</b>`:""}</div></div>
+      <div class="hpbar" style="min-width:0;flex:none"><i style="width:${p}%;background:${hpColor(p)}"></i><span>${c.hp.cur}/${c.hp.max}${c.hp.temp?` +${c.hp.temp}`:""} PF</span></div>
+      <div class="dmg"><input type="number" inputmode="numeric" id="md-${c.id}" placeholder="PF" aria-label="Quantità"><button class="btn sm" data-a="ms-dmg" data-id="${c.id}">Danno</button><button class="btn sm" data-a="ms-heal" data-id="${c.id}">Cura</button></div>
+      <div class="mstats">
+        <div><b>${esc(c.ac)}</b><small>CA</small></div>
+        <div><b>${sgn(initB(c))}</b><small>Iniz.</small></div>
+        <div><b>${esc(c.speed||"—")}</b><small>Velocità</small></div>
+        <div><b>${caster?spellDC(c):"—"}</b><small>CD inc.</small></div>
+        <div><b>${passive(c,"percezione","SAG")}</b><small>Perc. pass.</small></div>
+        <div><b>${passive(c,"intuizione","SAG")}</b><small>Intuiz. pass.</small></div>
+        <div><b>${10+skillB(c,"indagare","INT")}</b><small>Indag. pass.</small></div>
+        <div><b>${Math.max(0,c.level-c.hdUsed)}</b><small>Dadi vita</small></div>
+      </div>
+      <div class="msaves">${AB.map(a=>`<span class="${c.saves[a]?"pr":""}" title="Tiro salvezza ${AB_FULL[a]}">${a}<br><b>${sgn(saveB(c,a))}</b></span>`).join("")}</div>
+      ${sl.length?`<div style="font-size:.8rem"><span class="muted">Slot incantesimo:</span> ${sl.join(" · ")}</div>`:""}
+      ${tags?`<div class="chips">${tags}</div>`:""}
+      ${c.languages?`<div class="muted" style="font-size:.78rem">Lingue: ${esc(c.languages)}</div>`:""}
+      <div class="row" style="justify-content:space-between;align-items:center"><span class="muted" style="font-size:.72rem">${c.importedAt?"Ricevuta il "+new Date(c.importedAt).toLocaleString("it-IT",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"Creata qui"}</span>
+        <span class="row" style="gap:4px"><button class="btn sm" data-a="ms-open" data-id="${c.id}">Apri scheda</button><button class="btn sm ghost" data-a="ms-del" data-id="${c.id}" aria-label="Rimuovi ${esc(c.name)}">✕</button></span></div>
+    </div>`}).join("");
+  return `<section class="card">
+    <div class="card-h"><h2>Tavolo del Master</h2><div class="row"><button class="btn pri sm" data-a="ms-import">Importa schede giocatori</button><button class="btn sm" data-a="cmb-party" ${L.length?"":"disabled"}>Tira iniziativa per tutti</button></div></div>
+    <p class="muted" style="margin:0;font-size:.85rem">Ogni giocatore apre il Taccuino sul suo telefono e usa <b>☰ → Invia scheda al Master</b>. Tu importi il file qui: se la scheda c'è già viene aggiornata. Per avere i dati aggiornati, fatti rimandare la scheda.</p>
+    ${L.length?`<div class="mgrid">${cards}</div>`:`<div class="empty">Nessun personaggio in questa campagna. Importa le schede dei giocatori.</div>`}
+  </section>`;
+}
+
 /* ---- Missioni ---- */
 function vQuest(){
   const k=camp();const order={attiva:0,sospesa:1,completata:2,fallita:3};
@@ -924,9 +973,15 @@ const A={
   "cmb-clear":()=>{confirmBox("Terminare il combattimento e svuotare la lista? I PF dei personaggi restano come sono.","Termina",()=>{camp().combat={round:1,turn:0,list:[],started:false}});return "noRender"},
   "add-obj":b=>{const q=camp().quests.find(x=>x.id===b.dataset.q);const o={id:uid(),text:"",done:false};q.objectives.push(o);setTimeout(()=>{const el=$("#"+fid(`k.quests#${q.id}.objectives#${o.id}.text`));if(el)el.focus()},50)},
   "del-obj":b=>{const q=camp().quests.find(x=>x.id===b.dataset.q);q.objectives=q.objectives.filter(o=>o.id!==b.dataset.id)},
+  "ms-dmg":b=>{const c=camp().chars.find(x=>x.id===b.dataset.id);const n=numIn("#md-"+c.id);if(n)damage(c,n)},
+  "ms-heal":b=>{const c=camp().chars.find(x=>x.id===b.dataset.id);const n=numIn("#md-"+c.id);if(n)heal(c,n)},
+  "ms-open":b=>{const k=camp();k.activeChar=b.dataset.id;UI.tab="scheda";window.scrollTo(0,0)},
+  "ms-del":b=>{const k=camp();const c=k.chars.find(x=>x.id===b.dataset.id);confirmBox(`Togliere <b>${esc(c.name)}</b> da questa campagna? Il giocatore conserva la sua scheda sul suo telefono.`,"Togli",()=>{k.chars=k.chars.filter(x=>x.id!==c.id);k.combat.list=k.combat.list.filter(e=>e.charId!==c.id);if(k.activeChar===c.id)k.activeChar=k.chars[0]?k.chars[0].id:null});return "noRender"},
+  "ms-import":()=>{$("#file-char").click();return "noRender"},
+  "send-char":()=>{sendChar();return "noRender"},
   // menu
   menu:()=>{modal(`<h2>Gestione</h2>
-    <div class="f"><span class="lbl">Personaggi</span><div class="row"><button class="btn" data-a="new-char">Nuovo personaggio</button><button class="btn danger" data-a="del-char" ${ch()?"":"disabled"}>Elimina personaggio attuale</button></div></div>
+    <div class="f"><span class="lbl">Personaggi</span><div class="row"><button class="btn" data-a="new-char">Nuovo personaggio</button><button class="btn" data-a="send-char" ${ch()?"":"disabled"}>Invia scheda al Master</button><button class="btn danger" data-a="del-char" ${ch()?"":"disabled"}>Elimina personaggio attuale</button></div></div>
     <div class="f"><span class="lbl">Campagne</span><div class="row"><button class="btn" data-a="new-camp">Nuova campagna</button><button class="btn" data-a="ren-camp">Rinomina campagna</button><button class="btn danger" data-a="del-camp">Elimina campagna</button></div></div>
     <div class="f"><span class="lbl">Backup</span><div class="row"><button class="btn" data-a="export">Esporta tutto (JSON)</button><button class="btn" data-a="import">Importa backup</button></div>
     <p class="muted" style="margin:0;font-size:.8rem">I dati si salvano da soli. Esporta un backup ogni tanto, o per passare la scheda a un amico.</p></div>
@@ -1096,10 +1151,37 @@ async function doExport(){
   try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"application/json"}));a.download=name;document.body.appendChild(a);a.click();a.remove();toast("Backup scaricato.")}
   catch(err){toast("Download non disponibile qui.")}
 }
+async function sendChar(){
+  const c=ch();if(!c)return;const k=camp();
+  const data=JSON.stringify({app:"taccuino-dnd",kind:"char",v:1,exportedAt:new Date().toISOString(),campaign:k.name,char:c},null,2);
+  const name=`scheda-${(c.name||"pg").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"pg"}.json`;
+  try{const file=new File([data],name,{type:"application/json"});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:`Scheda di ${c.name}`,text:`Scheda di ${c.name} per il Master (Taccuino dell'Avventuriero)`});closeModal();return}}
+  catch(err){if(err&&err.name==="AbortError")return}
+  try{if(window.claude&&claude.use){const dl=await claude.use("downloads");if(dl){await dl.save({filename:name,data});closeModal();toast("Scheda salvata: mandala al Master.");return}}}catch(err){if(err&&err.code==="declined")return}
+  try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"application/json"}));a.download=name;document.body.appendChild(a);a.click();a.remove();closeModal();toast("Scheda scaricata: mandala al Master.")}
+  catch(err){toast("Condivisione non disponibile qui.")}
+}
+function importChars(list){
+  const k=camp();if(!k)return;let added=[],updated=[];
+  for(const c of list){c.importedAt=Date.now();const i=k.chars.findIndex(x=>x.id===c.id);
+    if(i>=0){k.chars[i]=c;updated.push(c.name)}else{k.chars.push(c);added.push(c.name)}
+    const e=k.combat.list.find(x=>x.charId===c.id);if(e){e.name=c.name;e.ac=c.ac}}
+  if(!k.activeChar&&k.chars[0])k.activeChar=k.chars[0].id;
+  delete k.__demo;migrate();touch();render();
+  toast([added.length?`<div>Aggiunt${added.length>1?"i":"o"}: <b>${esc(added.join(", "))}</b></div>`:"",updated.length?`<div>Aggiornat${updated.length>1?"i":"o"}: <b>${esc(updated.join(", "))}</b></div>`:""].join(""),4500);
+}
+const isCharFile=d=>d&&d.kind==="char"&&d.char&&typeof d.char==="object"&&d.char.id&&d.char.hp&&d.char.ab;
+$("#file-char").addEventListener("change",async e=>{
+  const files=[...e.target.files];e.target.value="";if(!files.length)return;const ok=[];let bad=0;
+  for(const f of files){try{const d=JSON.parse(await f.text());if(isCharFile(d))ok.push(d.char);else if(d&&Array.isArray(d.campaigns))d.campaigns.forEach(k=>(k.chars||[]).forEach(c=>c&&c.id&&c.hp&&ok.push(c)));else bad++}catch(err){bad++}}
+  if(ok.length)importChars(ok);
+  if(bad)setTimeout(()=>toast(`${bad} file non ${bad>1?"sono schede":"è una scheda"} del Taccuino.`),ok.length?4600:0);
+});
 let pendingImport=null;
 $("#file-import").addEventListener("change",async e=>{
   const f=e.target.files[0];e.target.value="";if(!f)return;
-  try{const d=JSON.parse(await f.text());const list=Array.isArray(d)?d:d.campaigns;
+  try{const d=JSON.parse(await f.text());if(isCharFile(d)){importChars([d.char]);return}const list=Array.isArray(d)?d:d.campaigns;
     if(!Array.isArray(list)||!list.length||!list.every(k=>k&&Array.isArray(k.chars)))throw new Error();
     pendingImport=list;
     modal(`<h2>Importa backup</h2><p style="margin:0">Il file contiene ${list.length} campagn${list.length>1?"e":"a"}: ${list.map(k=>`<b>${esc(k.name)}</b>`).join(", ")}.</p>
