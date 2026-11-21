@@ -1,0 +1,1125 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#8E2236">
+<meta name="description" content="Gestionale per campagne di D&D 5e: scheda, PF, inventario, magie, missioni, diario, dadi e iniziativa.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Taccuino">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Taccuino dell'Avventuriero</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: app a una colonna, barra vitale fissa in alto, schede scorrevoli, tiradadi flottante */
+:root{
+  --bg:#EEF0F4; --surface:#FFFFFF; --sunk:#E3E6EE; --line:#CDD2DE;
+  --fg:#1A1D29; --muted:#5D6375;
+  --accent:#8E2236; --accent-fg:#FFFFFF; --accent-soft:#F3DDE2;
+  --gold:#A9781B; --gold-soft:#F5E8C8;
+  --hp:#2E8B57; --hp-mid:#C58A12; --hp-low:#C0392B; --temp:#3A6FD8;
+  --shadow:0 1px 2px rgba(20,24,40,.08),0 4px 16px rgba(20,24,40,.06);
+  --f-display:"Cinzel",Georgia,serif; --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif; --f-num:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12141C; --surface:#1B1E29; --sunk:#232736; --line:#323850;
+  --fg:#E8EAF2; --muted:#9AA1B8;
+  --accent:#D9566E; --accent-fg:#14161E; --accent-soft:#3A1F28;
+  --gold:#E2B252; --gold-soft:#3A311C;
+  --hp:#4CC384; --hp-mid:#E2B252; --hp-low:#F0645A; --temp:#7EA6FF;
+  --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12141C; --surface:#1B1E29; --sunk:#232736; --line:#323850;
+  --fg:#E8EAF2; --muted:#9AA1B8;
+  --accent:#D9566E; --accent-fg:#14161E; --accent-soft:#3A1F28;
+  --gold:#E2B252; --gold-soft:#3A311C;
+  --hp:#4CC384; --hp-mid:#E2B252; --hp-low:#F0645A; --temp:#7EA6FF;
+  --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+button,input,select,textarea{font:inherit;color:inherit}
+.wrap{max-width:980px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--f-display);letter-spacing:.02em;text-wrap:balance;margin:0}
+h2{font-size:1.05rem}
+h3{font-size:.95rem}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.lbl{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+
+/* top */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--surface);border-bottom:1px solid var(--line)}
+.bar{display:flex;gap:8px;align-items:center;padding-block:8px}
+.brand{font-family:var(--f-display);font-weight:700;font-size:1rem;white-space:nowrap;color:var(--accent)}
+.bar select{min-width:0;flex:1 1 0;max-width:220px}
+.vital{display:flex;gap:10px;align-items:center;padding-block:4px 8px;flex-wrap:wrap}
+.vital .who{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:40%}
+.hpbar{flex:1 1 160px;min-width:140px;height:22px;border-radius:6px;background:var(--sunk);position:relative;overflow:hidden;border:1px solid var(--line)}
+.hpbar i{position:absolute;inset:0 auto 0 0;background:var(--hp);transition:width .25s}
+.hpbar b{position:absolute;inset:0 0 0 auto;background:var(--temp);opacity:.55}
+.hpbar span{position:relative;display:block;text-align:center;font:700 .8rem/22px var(--f-num)}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin-bottom:-1px}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{border:0;background:none;padding:9px 12px;border-bottom:2px solid transparent;color:var(--muted);font-weight:600;white-space:nowrap;cursor:pointer}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.cloud{font-size:.72rem;color:var(--muted);white-space:nowrap}
+
+/* blocks */
+main{padding-block:16px 120px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;grid-template-columns:minmax(0,1fr);gap:12px;min-width:0}
+.list{grid-template-columns:minmax(0,1fr)}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.f{display:grid;gap:3px;min-width:0;align-content:start}
+.fields{align-items:start}
+input,select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:7px 9px;width:100%;min-width:0}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);padding:0}
+textarea{min-height:90px;resize:vertical}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:600;font-size:.88rem;white-space:nowrap}
+.btn:hover{background:var(--sunk)}
+.btn.pri{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn.sm{padding:4px 9px;font-size:.8rem}
+.btn.ghost{border-color:transparent;background:none}
+.btn.danger{color:var(--hp-low)}
+.btn:disabled{opacity:.45;cursor:default}
+
+/* abilities */
+.abil{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+@media (max-width:560px){.abil{grid-template-columns:repeat(3,1fr)}}
+.ab{background:var(--sunk);border-radius:9px;padding:8px 6px;text-align:center;display:grid;gap:4px;justify-items:center}
+.ab .mod{font:700 1.35rem var(--f-num);cursor:pointer;background:none;border:0;padding:0}
+.ab .mod:hover{color:var(--accent)}
+.ab input{width:52px;text-align:center;padding:3px;font-family:var(--f-num)}
+.abl{display:flex;align-items:center;gap:4px;font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.abl span{width:30px;text-align:right}
+.abl.tmp input{border-style:dashed}
+.eff{font:600 .75rem var(--f-num);color:var(--muted)}
+.eff.up{color:var(--hp)}.eff.down{color:var(--hp-low)}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.stat{background:var(--sunk);border-radius:9px;padding:8px;display:grid;gap:2px;text-align:center}
+.stat .v{font:700 1.15rem var(--f-num)}
+.stat input{text-align:center;font:700 1.05rem var(--f-num);padding:2px;background:var(--surface)}
+.skills{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:2px 14px}
+.sk{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px dashed var(--line)}
+.sk .name{flex:1;min-width:0}
+.sk .ab3{font-size:.7rem;color:var(--muted)}
+.prof{width:20px;height:20px;border-radius:50%;border:2px solid var(--muted);background:none;cursor:pointer;padding:0;flex:none}
+.prof.p1{background:var(--accent);border-color:var(--accent)}
+.prof.p2{background:var(--gold);border-color:var(--gold);box-shadow:0 0 0 2px var(--surface) inset}
+.rollv{font:700 .9rem var(--f-num);min-width:38px;text-align:right;background:none;border:0;cursor:pointer;padding:2px 4px;border-radius:5px}
+.rollv:hover{background:var(--accent-soft);color:var(--accent)}
+
+/* chips / pips */
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);border-radius:99px;padding:4px 10px;font-size:.8rem;background:var(--surface);cursor:pointer}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.chip.static{cursor:default}
+.tag{display:inline-block;font-size:.7rem;padding:1px 7px;border-radius:99px;background:var(--sunk);color:var(--muted);font-weight:600}
+.tag.acc{background:var(--accent-soft);color:var(--accent)}
+.tag.gold{background:var(--gold-soft);color:var(--gold)}
+.pips{display:flex;gap:4px;flex-wrap:wrap}
+.pip{width:18px;height:18px;border-radius:4px;border:2px solid var(--gold);background:var(--gold);cursor:pointer;padding:0}
+.pip.used{background:none;opacity:.6}
+.pip.death-s{border-color:var(--hp);background:none}.pip.death-s.on{background:var(--hp)}
+.pip.death-f{border-color:var(--hp-low);background:none}.pip.death-f.on{background:var(--hp-low)}
+
+/* list items */
+.list{display:grid;gap:8px}
+details.it{border:1px solid var(--line);border-radius:9px;background:var(--surface)}
+details.it>summary{list-style:none;display:flex;gap:8px;align-items:center;padding:9px 11px;cursor:pointer}
+details.it>summary::-webkit-details-marker{display:none}
+details.it>summary .t{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+details.it[open]>summary{border-bottom:1px solid var(--line)}
+details.it .body{padding:11px;display:grid;gap:10px}
+.empty{color:var(--muted);font-size:.9rem;padding:8px 2px}
+.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.slot{background:var(--sunk);border-radius:9px;padding:8px;display:grid;gap:6px}
+.slot .row input{width:52px;padding:2px 4px;text-align:center}
+.spellcard{display:grid;gap:10px}
+.sp-brief{font-weight:600}
+details.it>summary .t.tt{display:grid;gap:1px;white-space:normal}
+.t.tt small{display:block}
+.t.tt>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.t.tt small{font-weight:400;color:var(--muted);font-size:.78rem;line-height:1.3}
+.sp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px 14px;background:var(--sunk);border-radius:8px;padding:10px}
+.sp-desc{display:grid;gap:8px;max-width:68ch}
+.conc{background:var(--gold-soft);color:var(--fg);border:1px solid var(--gold);border-radius:9px;padding:8px 12px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+
+/* combat */
+.cmb{display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--surface)}
+.cmb.cur{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.cmb.down{opacity:.55}
+.cmb .ini{font:700 1.2rem var(--f-num);text-align:center;background:var(--sunk);border-radius:7px;padding:4px}
+.cmb .ini input{text-align:center;padding:2px;font:700 1rem var(--f-num);background:transparent;border:0}
+.cmb .dmg{display:flex;gap:4px;align-items:center}
+.cmb .dmg input{width:62px;padding:4px 6px}
+@media (max-width:520px){.cmb{grid-template-columns:48px 1fr}.cmb .dmg{grid-column:1/-1}}
+
+/* dice */
+.fab{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:20;width:58px;height:58px;border-radius:16px;border:0;background:var(--accent);color:var(--accent-fg);box-shadow:var(--shadow);cursor:pointer;display:grid;place-items:center}
+.drawer{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -8px 30px rgba(0,0,0,.18);border-radius:16px 16px 0 0;max-height:78vh;overflow:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+.drawer .wrap{display:grid;gap:12px;padding-block:14px}
+.dgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+@media (max-width:440px){.dgrid{grid-template-columns:repeat(4,1fr)}}
+.dgrid button{padding:10px 0;font-family:var(--f-num);font-weight:700}
+.hist{display:grid;gap:4px;font-size:.85rem}
+.hist div{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed var(--line);padding:3px 0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:none;padding:6px 10px;font-weight:600;font-size:.82rem;cursor:pointer}
+.seg button.on{background:var(--accent);color:var(--accent-fg)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(88px + env(safe-area-inset-bottom,0px));z-index:40;background:var(--fg);color:var(--bg);border-radius:12px;padding:10px 16px;box-shadow:var(--shadow);max-width:min(92vw,420px);text-align:center}
+.toast .big{font:700 1.8rem var(--f-num)}
+.toast .crit{color:var(--gold)}
+.toast .fumble{color:var(--hp-low)}
+.modal-bg{position:fixed;inset:0;background:rgba(10,12,20,.55);z-index:50;display:grid;place-items:center;padding:16px}
+.modal{background:var(--surface);border-radius:14px;padding:18px;width:min(100%,460px);max-height:85vh;overflow:auto;display:grid;gap:12px;box-shadow:var(--shadow)}
+.sum{display:flex;gap:6px;align-items:center}
+.modal.wide{width:min(100%,660px)}
+.modal,.lu-sec{grid-template-columns:minmax(0,1fr)}
+.modal select{max-width:100%}
+.lu-sec .fields{grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr))}
+.lu-sec{display:grid;gap:8px;padding-top:12px;border-top:1px solid var(--line)}
+.lu-sec h3{display:flex;gap:8px;align-items:center}
+.lu-sec h3 .n{font:700 .75rem var(--f-num);background:var(--accent);color:var(--accent-fg);border-radius:99px;width:22px;height:22px;display:inline-grid;place-items:center}
+.lu-row{display:grid;grid-template-columns:minmax(0,1fr) 72px 130px 32px;gap:6px;align-items:center}
+.lu-row.sp{grid-template-columns:minmax(0,1fr) 120px 32px}
+.lu-row textarea{grid-column:1/-1;min-height:50px}
+@media (max-width:480px){.lu-row{grid-template-columns:minmax(0,1fr) 64px 32px}.lu-row select.rech{grid-column:1/3}}
+.slotgrid{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:4px;text-align:center}
+.slotgrid input{padding:4px 2px;text-align:center}
+@media (max-width:480px){.slotgrid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="top">
+  <div class="wrap">
+    <div class="bar">
+      <span class="brand">⚔ Taccuino</span>
+      <select id="sel-camp" aria-label="Campagna"></select>
+      <select id="sel-char" aria-label="Personaggio"></select>
+      <button class="btn ghost" data-a="menu" aria-label="Menu">☰</button>
+    </div>
+    <div class="vital" id="vital"></div>
+    <nav class="tabs" id="tabs" role="tablist"></nav>
+  </div>
+</div>
+<main class="wrap" id="view"></main>
+<button class="fab" data-a="dice" aria-label="Tiradadi">
+  <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M16 2 29 9.5v13L16 30 3 22.5v-13z"/><path d="M16 2 9 20h14z" fill="none"/><path d="M3 9.5 9 20 3 22.5M29 9.5 23 20l6 2.5M9 20l7 10 7-10"/></svg>
+</button>
+<div id="drawer" class="drawer" hidden></div>
+<div id="toast" class="toast" hidden></div>
+<div id="modal" class="modal-bg" hidden></div>
+<input type="file" id="file-import" accept="application/json,.json" hidden>
+
+<script>
+(()=>{
+"use strict";
+/* ============ dati di riferimento ============ */
+const AB=["FOR","DES","COS","INT","SAG","CAR"];
+const AB_FULL={FOR:"Forza",DES:"Destrezza",COS:"Costituzione",INT:"Intelligenza",SAG:"Saggezza",CAR:"Carisma"};
+const SKILLS=[["acrobazia","Acrobazia","DES"],["addestrare","Addestrare Animali","SAG"],["arcano","Arcano","INT"],["atletica","Atletica","FOR"],["furtivita","Furtività","DES"],["indagare","Indagare","INT"],["inganno","Inganno","CAR"],["intimidire","Intimidire","CAR"],["intrattenere","Intrattenere","CAR"],["intuizione","Intuizione","SAG"],["medicina","Medicina","SAG"],["natura","Natura","INT"],["percezione","Percezione","SAG"],["persuasione","Persuasione","CAR"],["rapidita","Rapidità di Mano","DES"],["religione","Religione","INT"],["sopravvivenza","Sopravvivenza","SAG"],["storia","Storia","INT"]];
+const CONDITIONS=["Accecato","Affascinato","Afferrato","Assordato","Avvelenato","Incapacitato","Intralciato","Invisibile","Paralizzato","Pietrificato","Privo di sensi","Prono","Spaventato","Stordito"];
+const COINS=[["mp","Platino",10],["mo","Oro",1],["me","Electrum",.5],["ma","Argento",.1],["mr","Rame",.01]];
+const SCHOOLS=["","Abiurazione","Ammaliamento","Divinazione","Evocazione","Illusione","Invocazione","Necromanzia","Trasmutazione"];
+const QSTATUS={attiva:"Attiva",completata:"Completata",fallita:"Fallita",sospesa:"In sospeso"};
+const TABS=[["scheda","Scheda"],["inventario","Inventario"],["capacita","Capacità"],["magie","Magie"],["combattimento","Combattimento"],["missioni","Missioni"],["diario","Diario"],["mondo","PNG e luoghi"]];
+
+
+/* ============ dati del Manuale del Giocatore (5e) ============ */
+const RACES=["Dragonide","Elfo alto","Elfo dei boschi","Elfo oscuro (Drow)","Gnomo delle foreste","Gnomo delle rocce","Halfling piedelesto","Halfling tozzo","Mezzelfo","Mezzorco","Nano delle colline","Nano delle montagne","Tiefling","Umano"];
+const CLASS_DATA={
+  Barbaro:{hd:12,saves:["FOR","COS"],sub:"Cammino primordiale",subs:["Cammino del Berserker","Cammino del Combattente Totemico"]},
+  Bardo:{hd:8,saves:["DES","CAR"],sa:"CAR",sub:"Collegio bardico",subs:["Collegio della Sapienza","Collegio del Valore"]},
+  Chierico:{hd:8,saves:["SAG","CAR"],sa:"SAG",sub:"Dominio divino",subs:["Dominio della Conoscenza","Dominio della Guerra","Dominio dell'Inganno","Dominio della Luce","Dominio della Natura","Dominio della Tempesta","Dominio della Vita"]},
+  Druido:{hd:8,saves:["INT","SAG"],sa:"SAG",sub:"Circolo druidico",subs:["Circolo della Luna","Circolo della Terra (Artico)","Circolo della Terra (Costa)","Circolo della Terra (Deserto)","Circolo della Terra (Foresta)","Circolo della Terra (Montagna)","Circolo della Terra (Palude)","Circolo della Terra (Prateria)","Circolo della Terra (Underdark)"]},
+  Guerriero:{hd:10,saves:["FOR","COS"],sub:"Archetipo marziale",subs:["Campione","Maestro di Battaglia","Cavaliere Mistico"],sa3:"INT"},
+  Ladro:{hd:8,saves:["DES","INT"],sub:"Archetipo ladresco",subs:["Furfante","Assassino","Mistificatore Arcano"],sa3:"INT"},
+  Mago:{hd:6,saves:["INT","SAG"],sa:"INT",sub:"Tradizione arcana",subs:["Scuola di Abiurazione","Scuola di Ammaliamento","Scuola di Divinazione","Scuola di Evocazione","Scuola di Illusione","Scuola di Invocazione","Scuola di Necromanzia","Scuola di Trasmutazione"]},
+  Monaco:{hd:8,saves:["FOR","DES"],sub:"Tradizione monastica",subs:["Via della Mano Aperta","Via dell'Ombra","Via dei Quattro Elementi"]},
+  Paladino:{hd:10,saves:["SAG","CAR"],sa:"CAR",sub:"Giuramento sacro",subs:["Giuramento di Devozione","Giuramento degli Antichi","Giuramento di Vendetta"]},
+  Ranger:{hd:10,saves:["FOR","DES"],sa:"SAG",sub:"Archetipo ranger",subs:["Cacciatore","Signore delle Bestie"]},
+  Stregone:{hd:6,saves:["COS","CAR"],sa:"CAR",sub:"Origine stregonesca",subs:["Discendenza Draconica","Magia Selvaggia"]},
+  Warlock:{hd:8,saves:["SAG","CAR"],sa:"CAR",sub:"Patrono ultraterreno",subs:["L'Arcifata","L'Immondo","Il Grande Antico"]},
+};
+const BACKGROUNDS=["Accolito","Artigiano di Gilda","Artista","Ciarlatano","Criminale","Eremita","Eroe Popolare","Forestiero","Marinaio","Monello","Nobile","Sapiente","Soldato"];
+const ALIGNMENTS=["Legale Buono","Neutrale Buono","Caotico Buono","Legale Neutrale","Neutrale","Caotico Neutrale","Legale Malvagio","Neutrale Malvagio","Caotico Malvagio"];
+function choice(path,opts){
+  const v=getv(path)||"";const custom=(v&&!opts.includes(v))||UI.custom.has(path);
+  return `<select data-choice="${path}" id="${fid(path)}-ch"><option value="">—</option>${opts.map(o=>`<option ${o===v&&!custom?"selected":""}>${esc(o)}</option>`).join("")}<option value="__altro" ${custom?"selected":""}>Altro (scrivi)…</option></select>${custom?inp(path,{ph:"Scrivi…"}):""}`;
+}
+function applyClass(c){const d=CLASS_DATA[c.cls];if(!d)return;const done=[];
+  if(Number(c.hitDie)!==d.hd){c.hitDie=d.hd;done.push(`dado vita d${d.hd}`)}
+  if(d.sa&&c.spellAbility!==d.sa){c.spellAbility=d.sa;done.push(`incantesimi con ${AB_FULL[d.sa]}`)}
+  if(!AB.some(a=>c.saves[a])){d.saves.forEach(a=>c.saves[a]=true);done.push(`TS di ${d.saves.map(a=>AB_FULL[a]).join(" e ")}`)}
+  if(c.subclass&&!d.subs.includes(c.subclass))c.subclass="";
+  if(done.length)toast(`<div>${esc(c.cls)}</div><div style="font-size:.85rem">Impostati: ${esc(done.join(", "))}</div>`,4000)}
+document.addEventListener("change",e=>{const el=e.target;if(!el.dataset||!el.dataset.choice)return;const path=el.dataset.choice;
+  if(el.value==="__altro"){UI.custom.add(path);setv(path,"");touch();render();const t=$("#"+fid(path));if(t)t.focus();return}
+  UI.custom.delete(path);setv(path,el.value);if(path==="c.cls"){UI.custom.delete("c.subclass");applyClass(ch())}touch();render()});
+/* ============ utilità ============ */
+const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const sgn=n=>(n>=0?"+":"")+n;
+const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+const $=s=>document.querySelector(s);
+const today=()=>new Date().toISOString().slice(0,10);
+const ls={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+
+/* ============ modelli ============ */
+function newChar(name){
+  const slots={};for(let i=1;i<=9;i++)slots[i]={max:0,used:0};
+  return {id:uid(),name:name||"Nuovo eroe",player:"",race:"",cls:"",subclass:"",level:1,background:"",alignment:"",xp:0,
+    ab:{FOR:10,DES:10,COS:10,INT:10,SAG:10,CAR:10},abTemp:{FOR:0,DES:0,COS:0,INT:0,SAG:0,CAR:0},saves:{},skills:{},
+    ac:10,speed:"9 m",initMisc:0,hp:{cur:10,max:10,temp:0},hitDie:8,hdUsed:0,death:{s:0,f:0},
+    conditions:[],exhaustion:0,effects:[],inspiration:false,concentration:"",
+    attacks:[],inv:[],coins:{mp:0,mo:0,me:0,ma:0,mr:0},features:[],
+    spellAbility:"INT",slots,spells:[],
+    profs:"",languages:"",traits:{personality:"",ideals:"",bonds:"",flaws:""},backstory:"",notes:""};
+}
+function newCamp(name){
+  return {id:uid(),name:name||"Nuova campagna",chars:[],activeChar:null,notes:"",sessions:[],quests:[],questItems:[],npcs:[],places:[],
+    combat:{round:1,turn:0,list:[]},updatedAt:Date.now()};
+}
+function demoCamp(){
+  const k=newCamp("La Miniera Perduta (esempio)");
+  const c=newChar("Elara Vento d'Argento");
+  Object.assign(c,{player:"",race:"Mezzelfo",cls:"Chierico",subclass:"Dominio della Vita",level:3,background:"Accolito",alignment:"Neutrale Buono",xp:900,
+    ab:{FOR:12,DES:10,COS:14,INT:10,SAG:17,CAR:13},saves:{SAG:true,CAR:true},skills:{medicina:1,religione:1,intuizione:1,persuasione:1},
+    ac:18,hp:{cur:21,max:24,temp:0},spellAbility:"SAG",languages:"Comune, Elfico, Celestiale",profs:"Armature leggere e medie, scudi, armi semplici"});
+  c.slots[1]={max:4,used:1};c.slots[2]={max:2,used:0};
+  c.attacks=[{id:uid(),name:"Mazza",bonus:3,dmg:"1d6+1",type:"contundenti"},{id:uid(),name:"Fiamma Sacra",bonus:0,dmg:"1d8",type:"radiosi (TS DES CD 13)"}];
+  c.inv=[{id:uid(),name:"Cotta di maglia",qty:1,weight:27.5,equipped:true,notes:""},{id:uid(),name:"Scudo con simbolo sacro",qty:1,weight:3,equipped:true,notes:""},{id:uid(),name:"Pozione di guarigione",qty:2,weight:0.25,equipped:false,notes:"2d4+2 PF"},{id:uid(),name:"Razioni (1 giorno)",qty:5,weight:1,equipped:false,notes:""}];
+  c.coins={mp:0,mo:37,me:0,ma:12,mr:40};
+  c.features=[{id:uid(),name:"Incanalare Divinità",source:"Chierico 2",max:1,used:0,recharge:"short",desc:"Scacciare Non Morti o Preservare la Vita."},{id:uid(),name:"Discepolo della Vita",source:"Dominio della Vita",max:0,used:0,recharge:"none",desc:"Gli incantesimi di guarigione curano 2 + livello dell'incantesimo PF aggiuntivi."}];
+  c.spells=[{id:uid(),srd:"sacred-flame",name:"Fiamma Sacra",level:0,school:"Invocazione",time:"1 azione",range:"18 m",comp:"V, S",duration:"Istantanea",conc:false,ritual:false,prepared:true,dmg:"1d8",desc:"Il bersaglio effettua un TS su Destrezza o subisce 1d8 danni radiosi."},
+    {id:uid(),srd:"cure-wounds",name:"Cura Ferite",level:1,school:"Invocazione",time:"1 azione",range:"Contatto",comp:"V, S",duration:"Istantanea",conc:false,ritual:false,prepared:true,dmg:"1d8+3",desc:"Una creatura toccata recupera 1d8 + mod. incantatore PF."},
+    {id:uid(),srd:"bless",name:"Benedizione",level:1,school:"Ammaliamento",time:"1 azione",range:"9 m",comp:"V, S, M",duration:"1 minuto",conc:true,ritual:false,prepared:true,dmg:"",desc:"Fino a tre creature aggiungono 1d4 ai tiri per colpire e ai TS."},
+    {id:uid(),srd:"spiritual-weapon",name:"Arma Spirituale",level:2,school:"Invocazione",time:"1 azione bonus",range:"18 m",comp:"V, S",duration:"1 minuto",conc:false,ritual:false,prepared:true,dmg:"1d8+3",desc:"Crei un'arma spettrale fluttuante che attacca come azione bonus."}];
+  c.traits={personality:"Cito testi sacri in ogni situazione.",ideals:"Carità.",bonds:"Il tempio di Phandalin.",flaws:"Mi fido troppo dei sacerdoti."};
+  k.chars.push(c);k.activeChar=c.id;
+  k.quests=[{id:uid(),title:"Trovare la Miniera dell'Eco d'Onda",giver:"Gundren Cercaroccia",status:"attiva",reward:"10 mo a testa",desc:"Gundren è stato rapito durante il viaggio verso Phandalin.",objectives:[{id:uid(),text:"Scortare il carro a Phandalin",done:true},{id:uid(),text:"Ritrovare Gundren",done:false}]}];
+  k.questItems=[{id:uid(),name:"Mappa della miniera",holder:"Gundren (rubata)",quest:"Trovare la Miniera dell'Eco d'Onda",desc:"Indica il percorso per la miniera perduta."}];
+  k.npcs=[{id:uid(),name:"Sildar Hallwinter",role:"Guerriero, Alleanza dei Lord",place:"Phandalin",attitude:"Amichevole",notes:"Salvato dai goblin."}];
+  k.places=[{id:uid(),name:"Phandalin",kind:"Villaggio",notes:"Taverna Stonehill, Bottega del Leone."}];
+  k.sessions=[{id:uid(),date:today(),title:"Sessione 1: L'imboscata",text:"Il gruppo cade in un'imboscata goblin sulla Strada Triboar e segue le tracce fino al nascondiglio."}];
+  return k;
+}
+
+/* ============ stato ============ */
+let S={campaigns:[],active:null};
+const UI={custom:new Set(),spellView:"mine",comp:{q:"",cls:null,lvl:"",sch:"",conc:false,rit:false,limit:50},tab:ls.get("ddf-tab")||"scheda",open:new Set(),diceMode:"norm",hist:[],drawer:false,cloud:"salvato su questo dispositivo",onlyPrepared:false};
+
+function camp(){return S.campaigns.find(c=>c.id===S.active)||S.campaigns[0]||null}
+function ch(){const k=camp();if(!k)return null;return k.chars.find(c=>c.id===k.activeChar)||k.chars[0]||null}
+
+/* derivati */
+const mod=s=>Math.floor((Number(s)||0)/2)-5;
+const pb=c=>Math.ceil((Number(c.level)||1)/4)+1;
+const score=(c,a)=>(Number(c.ab[a])||0)+(Number((c.abTemp||{})[a])||0);
+const amod=(c,a)=>mod(score(c,a));
+const saveB=(c,a)=>amod(c,a)+(c.saves[a]?pb(c):0);
+const skillB=(c,k,a)=>amod(c,a)+(c.skills[k]||0)*pb(c);
+const initB=c=>amod(c,"DES")+(Number(c.initMisc)||0);
+const spellDC=c=>8+pb(c)+amod(c,c.spellAbility);
+const spellAtk=c=>pb(c)+amod(c,c.spellAbility);
+const passive=(c,k,a)=>10+skillB(c,k,a);
+const invWeight=c=>c.inv.reduce((s,i)=>s+(Number(i.weight)||0)*(Number(i.qty)||0),0);
+const capacity=c=>score(c,"FOR")*7.5;
+
+/* ============ salvataggio: locale + cloud (db privato) ============ */
+let saveT=null,cloudT=null;
+function touch(){const k=camp();if(k)k.updatedAt=Date.now();save()}
+function save(){
+  clearTimeout(saveT);saveT=setTimeout(()=>ls.set("ddf-state",JSON.stringify(S)),250);
+  clearTimeout(cloudT);cloudT=setTimeout(pushCloud,1500);
+}
+let DB=null,COL=null,synced={},pendingDel=new Set(),chain=Promise.resolve();
+async function initCloud(){
+  if(!window.claude||!window.claude.use)return;
+  try{
+    const [user,db]=await Promise.all([claude.use("user"),claude.use("db")]);
+    if(!user||!db){renderTop();return}
+    const id=await user.id();if(!id)return;
+    DB=db;COL=db.collection("data/users/"+id);
+    UI.cloud="sincronizzo…";renderTop();
+    const snap=await Promise.race([COL.get(),new Promise((_,r)=>setTimeout(()=>r(new Error("timeout")),10000))]);
+    let meta=null;const remote={};
+    for(const d of snap.docs){const v=d.data()||{};
+      if(d.id==="meta")meta=v;
+      else if(d.id.startsWith("camp_")&&typeof v.json==="string"){try{remote[d.id.slice(5)]=JSON.parse(v.json)}catch(e){}}}
+    const order=meta&&Array.isArray(meta.order)?meta.order:Object.keys(remote);
+    const merged=[];const seen=new Set();
+    const localById=Object.fromEntries(S.campaigns.map(c=>[c.id,c]));
+    const onlyDemoLocal=S.campaigns.length===1&&S.campaigns[0].__demo;
+    for(const id of order){const r=remote[id];if(!r)continue;const l=localById[id];
+      const pick=l&&(l.updatedAt||0)>(r.updatedAt||0)?l:r;merged.push(pick);seen.add(id);synced[id]=JSON.stringify(r)}
+    for(const id in remote)if(!seen.has(id)){merged.push(remote[id]);seen.add(id);synced[id]=JSON.stringify(remote[id])}
+    if(!(onlyDemoLocal&&merged.length))for(const l of S.campaigns)if(!seen.has(l.id))merged.push(l);
+    if(merged.length){S.campaigns=merged;migrate();upgradeMySpells();if(meta&&meta.active&&merged.some(c=>c.id===meta.active))S.active=meta.active;if(!camp())S.active=merged[0].id}
+    synced.__meta=meta?JSON.stringify({active:meta.active,order:meta.order}):"";
+    UI.cloud="salvato nel tuo account";
+    ls.set("ddf-state",JSON.stringify(S));render();pushCloud();
+  }catch(e){DB=null;COL=null;UI.cloud="solo su questo dispositivo";renderTop()}
+}
+function pushCloud(){
+  if(!COL)return;
+  chain=chain.then(async()=>{
+    try{
+      let wrote=false;
+      for(const id of [...pendingDel]){await COL.doc("camp_"+id).delete();pendingDel.delete(id);delete synced[id];wrote=true}
+      for(const k of S.campaigns){const j=JSON.stringify(k);if(synced[k.id]!==j){
+        if(j.length>250000){UI.cloud="campagna troppo grande per il cloud";continue}
+        await COL.doc("camp_"+k.id).set({json:j,updatedAt:k.updatedAt||Date.now()});synced[k.id]=j;wrote=true}}
+      const meta={active:S.active,order:S.campaigns.map(c=>c.id)};const mj=JSON.stringify(meta);
+      if(synced.__meta!==mj){await COL.doc("meta").set(meta);synced.__meta=mj;wrote=true}
+      if(wrote||UI.cloud!=="salvato nel tuo account"){UI.cloud="salvato nel tuo account";renderCloud()}
+    }catch(e){UI.cloud="errore di salvataggio, riprovo";renderCloud();clearTimeout(cloudT);cloudT=setTimeout(pushCloud,8000)}
+  });
+}
+
+function load(){
+  try{const raw=ls.get("ddf-state");if(raw){const s=JSON.parse(raw);if(s&&Array.isArray(s.campaigns)&&s.campaigns.length){S=s;migrate();return}}}catch(e){}
+  const d=demoCamp();d.__demo=true;S={campaigns:[d],active:d.id};
+}
+function migrate(){ // completa campi mancanti dopo aggiornamenti
+  for(const k of S.campaigns){const base=newCamp();for(const key in base)if(k[key]===undefined)k[key]=base[key];
+    for(const c of k.chars){const b=newChar();for(const key in b)if(c[key]===undefined)c[key]=b[key];for(let i=1;i<=9;i++)if(!c.slots[i])c.slots[i]={max:0,used:0}}}
+}
+
+/* ============ binding ============ */
+function resolve(path){
+  const segs=path.split(".");let o=segs[0]==="c"?ch():segs[0]==="k"?camp():null;
+  for(let i=1;i<segs.length-1;i++){o=step(o,segs[i]);if(o==null)return[null]}
+  return[o,segs[segs.length-1]];
+}
+function step(o,seg){if(o==null)return null;const h=seg.indexOf("#");if(h<0)return o[seg];const arr=o[seg.slice(0,h)];return Array.isArray(arr)?arr.find(x=>x.id===seg.slice(h+1)):null}
+function getv(path){const[o,k]=resolve(path);return o?o[k]:undefined}
+function setv(path,v){const[o,k]=resolve(path);if(o)o[k]=v}
+const fid=p=>"f-"+p.replace(/[^a-zA-Z0-9]/g,"_");
+function inp(path,opt={}){
+  const v=getv(path);const t=opt.type||(typeof v==="number"?"number":"text");
+  if(t==="checkbox")return `<input type="checkbox" id="${fid(path)}" data-b="${path}" ${v?"checked":""} ${opt.attrs||""}>`;
+  return `<input type="${t}" id="${fid(path)}" data-b="${path}" ${t==="number"?'inputmode="numeric" data-n="1"':""} value="${esc(v??"")}" placeholder="${esc(opt.ph||"")}" ${opt.attrs||""}>`;
+}
+function ta(path,ph="",rows=4){return `<textarea id="${fid(path)}" data-b="${path}" rows="${rows}" placeholder="${esc(ph)}">${esc(getv(path)??"")}</textarea>`}
+function sel(path,options,opt={}){const v=getv(path);return `<select id="${fid(path)}" data-b="${path}" ${opt.num?'data-n="1"':""}>${options.map(o=>{const[val,l]=Array.isArray(o)?o:[o,o];return `<option value="${esc(val)}" ${String(val)===String(v)?"selected":""}>${esc(l)}</option>`}).join("")}</select>`}
+const fld=(label,html,cls="")=>`<label class="f ${cls}"><span class="lbl">${label}</span>${html}</label>`;
+
+document.addEventListener("input",e=>{
+  const el=e.target;if(!el.dataset||!el.dataset.b)return;
+  let v=el.type==="checkbox"?el.checked:el.value;
+  if(el.dataset.n!==undefined&&el.type!=="checkbox"){v=v===""?0:Number(v);if(Number.isNaN(v))return}
+  setv(el.dataset.b,v);touch();refreshLive();
+  if(el.tagName==="SELECT"||el.type==="checkbox")render();
+});
+
+/* parti "vive" aggiornate durante la digitazione senza ricreare i campi */
+const LIVE={
+  mod:a=>{const c=ch();return sgn(amod(c,a))},
+  pb:()=>sgn(pb(ch())),
+  init:()=>sgn(initB(ch())),
+  dc:()=>spellDC(ch()),
+  satk:()=>sgn(spellAtk(ch())),
+  weight:()=>{const c=ch();return `${invWeight(c).toFixed(1)} / ${capacity(c)} kg`},
+  wealth:()=>{const c=ch();return COINS.reduce((s,[k,,v])=>s+(Number(c.coins[k])||0)*v,0).toFixed(2)+" mo"},
+  sumtitle:p=>esc(getv(p)||"Senza nome"),
+  save:a=>sgn(saveB(ch(),a)),
+  score:a=>{const c=ch();const t=Number(c.abTemp[a])||0;return t?`<span class="eff ${t>0?"up":"down"}">${score(c,a)} (${Number(c.ab[a])||0}${t>0?"+":"−"}${Math.abs(t)})</span>`:`${score(c,a)}`},
+  skill:k=>{const s=SKILLS.find(x=>x[0]===k);return sgn(skillB(ch(),k,s[2]))},
+  passive:k=>passive(ch(),k,"SAG"),
+  hd:()=>{const c=ch();return `${Math.max(0,c.level-c.hdUsed)} / ${c.level} d${c.hitDie}`},
+};
+function refreshLive(){
+  document.querySelectorAll("[data-live]").forEach(el=>{const i=el.dataset.live.indexOf(":");const n=i<0?el.dataset.live:el.dataset.live.slice(0,i),arg=i<0?"":el.dataset.live.slice(i+1);if(!LIVE[n])return;if(n!=="sumtitle"&&!ch())return;el.innerHTML=LIVE[n](arg)});
+  renderVital();
+}
+
+/* ============ dadi ============ */
+const rnd=n=>1+Math.floor(Math.random()*n);
+function parseRoll(expr){
+  const s=String(expr||"").replace(/\s+/g,"").toLowerCase().replace(/^\+/,"");
+  if(!s)return null;
+  const re=/([+-]?)(?:(\d*)d(\d+)|(\d+))/gy;let m,total=0,parts=[],pos=0,dice=[];
+  while(pos<s.length){re.lastIndex=pos;m=re.exec(s);if(!m||m[0]==="")return null;pos=re.lastIndex;
+    const sign=m[1]==="-"?-1:1;
+    if(m[3]){const n=Math.min(Number(m[2]||1),100),f=Number(m[3]);if(!f)return null;const r=[];for(let i=0;i<n;i++)r.push(rnd(f));const sum=r.reduce((a,b)=>a+b,0);total+=sign*sum;parts.push(`${sign<0?"−":parts.length?"+":""}${n}d${f}[${r.join(",")}]`);dice.push({f,r})}
+    else{total+=sign*Number(m[4]);parts.push(`${sign<0?"−":parts.length?"+":""}${m[4]}`)}}
+  return{total,detail:parts.join(" "),dice};
+}
+function roll(label,expr){
+  const r=parseRoll(expr);if(!r){toast(`<div>Formula non valida: ${esc(expr)}</div><div class="muted">Esempi: 1d20+5, 2d6+3, 4d6</div>`);return}
+  pushHist(label||expr,r.total,r.detail);toast(`<div>${esc(label||expr)}</div><div class="big">${r.total}</div><div style="font-size:.8rem;opacity:.8">${esc(r.detail)}</div>`);
+}
+function d20(label,bonus){
+  const mode=UI.diceMode;const a=rnd(20),b=rnd(20);
+  const k=mode==="adv"?Math.max(a,b):mode==="dis"?Math.min(a,b):a;
+  const total=k+bonus;const pair=mode==="norm"?`${a}`:`${a}, ${b} → ${k}`;
+  const cls=k===20?"crit":k===1?"fumble":"";const note=k===20?"20 naturale!":k===1?"1 naturale":"";
+  const m=mode==="adv"?" (vantaggio)":mode==="dis"?" (svantaggio)":"";
+  pushHist(label+m,total,`d20[${pair}] ${sgn(bonus)}`);
+  toast(`<div>${esc(label)}${m}</div><div class="big ${cls}">${total}</div><div style="font-size:.8rem;opacity:.8">d20 [${pair}] ${sgn(bonus)} ${note?`· <b class="${cls}">${note}</b>`:""}</div>`);
+  if(mode!=="norm"){UI.diceMode="norm";if(UI.drawer)renderDrawer()}
+  return total;
+}
+function pushHist(label,total,detail){UI.hist.unshift({label,total,detail,t:new Date().toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})});UI.hist=UI.hist.slice(0,40);if(UI.drawer)renderDrawer()}
+let toastT=null;
+function toast(html,ms=3200){const t=$("#toast");t.innerHTML=html;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,ms)}
+
+/* ============ modali ============ */
+function modal(html,cls=""){const m=$("#modal");m.innerHTML=`<div class="modal ${cls}" role="dialog" aria-modal="true">${html}</div>`;m.hidden=false;const f=m.querySelector("input,button");if(f)f.focus()}
+function closeModal(){$("#modal").hidden=true;$("#modal").innerHTML=""}
+let pendingConfirm=null;
+function confirmBox(text,okLabel,fn){pendingConfirm=fn;modal(`<h2>Conferma</h2><p>${text}</p><div class="row" style="justify-content:flex-end"><button class="btn" data-a="modal-close">Annulla</button><button class="btn pri" data-a="confirm-ok">${esc(okLabel)}</button></div>`)}
+$("#modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal()});
+
+/* ============ HP ============ */
+function damage(c,n){n=Math.max(0,Math.floor(n));if(!n)return;
+  const t=Math.min(c.hp.temp,n);c.hp.temp-=t;n-=t;const before=c.hp.cur;c.hp.cur=Math.max(0,c.hp.cur-n);
+  if(c.concentration&&t+n>0){const dc=Math.max(10,Math.floor((t+n)/2));toast(`<div>${esc(c.name)} subisce ${t+n} danni</div><div>Concentrazione su <b>${esc(c.concentration)}</b>: TS COS CD ${dc}</div>`,5000)}
+  if(before>0&&c.hp.cur===0)toast(`<div><b>${esc(c.name)}</b> è a 0 PF!</div><div>Tiri salvezza contro morte attivi.</div>`,5000);
+}
+function heal(c,n){n=Math.max(0,Math.floor(n));if(!n)return;if(c.hp.cur===0)c.death={s:0,f:0};c.hp.cur=Math.min(c.hp.max,c.hp.cur+n)}
+
+/* ============ rendering ============ */
+function render(){renderTop();renderView();if(UI.drawer)renderDrawer()}
+function renderTop(){
+  const k=camp();
+  $("#sel-camp").innerHTML=S.campaigns.map(c=>`<option value="${c.id}" ${k&&c.id===k.id?"selected":""}>${esc(c.name)}</option>`).join("");
+  $("#sel-char").innerHTML=k&&k.chars.length?k.chars.map(c=>`<option value="${c.id}" ${ch()&&c.id===ch().id?"selected":""}>${esc(c.name)}</option>`).join(""):`<option>Nessun personaggio</option>`;
+  $("#tabs").innerHTML=TABS.map(([id,l])=>`<button role="tab" aria-selected="${UI.tab===id}" data-a="tab" data-v="${id}">${l}</button>`).join("");
+  renderVital();
+}
+function renderCloud(){const el=$("#cloud");if(el)el.textContent=UI.cloud}
+function hpPct(c){return c.hp.max?clamp(c.hp.cur/c.hp.max*100,0,100):0}
+function hpColor(p){return p>50?"var(--hp)":p>25?"var(--hp-mid)":"var(--hp-low)"}
+function renderVital(){
+  const c=ch();const v=$("#vital");
+  if(!c){v.innerHTML=`<span class="muted">Crea un personaggio dal menu ☰</span><span class="cloud" id="cloud">${esc(UI.cloud)}</span>`;return}
+  const p=hpPct(c);const tp=c.hp.max?clamp(c.hp.temp/c.hp.max*100,0,100):0;
+  const tags=[...c.conditions.map(x=>`<span class="tag acc">${esc(x)}</span>`),c.exhaustion>0?`<span class="tag acc">Esaurimento ${c.exhaustion}</span>`:"",c.concentration?`<span class="tag gold">◎ ${esc(c.concentration)}</span>`:"",...c.effects.map(e=>`<span class="tag">${esc(e.name)}${e.rounds?` ${e.rounds}r`:""}</span>`)].join("");
+  v.innerHTML=`<span class="who">${esc(c.name)}</span>
+   <div class="hpbar" title="Punti ferita"><i style="width:${p}%;background:${hpColor(p)}"></i><b style="width:${tp}%"></b><span>${c.hp.cur}/${c.hp.max}${c.hp.temp?` +${c.hp.temp}`:""} PF</span></div>
+   <span class="tag">CA ${esc(c.ac)}</span>
+   <button class="btn sm" data-a="quick-hp">± PF</button>
+   ${tags?`<div class="chips" style="flex-basis:100%">${tags}</div>`:""}
+   <span class="cloud" id="cloud" style="flex-basis:100%">${esc(UI.cloud)}</span>`;
+}
+function renderView(){
+  ls.set("ddf-tab",UI.tab);
+  const k=camp(),c=ch();const v=$("#view");
+  if(!k){v.innerHTML=`<div class="card"><h2>Nessuna campagna</h2><button class="btn pri" data-a="new-camp">Crea campagna</button></div>`;return}
+  const charTabs=["scheda","inventario","capacita","magie"];
+  if(charTabs.includes(UI.tab)&&!c){v.innerHTML=`<div class="card"><h2>Nessun personaggio in questa campagna</h2><p class="muted">Aggiungi il tuo eroe per usare scheda, inventario, capacità e magie.</p><div><button class="btn pri" data-a="new-char">Nuovo personaggio</button></div></div>`;return}
+  v.innerHTML=({scheda:vScheda,inventario:vInv,capacita:vCap,magie:vMagie,combattimento:vCombat,missioni:vQuest,diario:vDiario,mondo:vMondo}[UI.tab]||vScheda)();
+  v.querySelectorAll("details[data-id]").forEach(d=>d.addEventListener("toggle",()=>{d.open?UI.open.add(d.dataset.id):UI.open.delete(d.dataset.id)}));
+}
+const isOpen=id=>UI.open.has(id)?"open":"";
+
+/* ---- Scheda ---- */
+function vScheda(){
+  const c=ch();const dead=c.hp.cur===0;
+  return `
+  <section class="card">
+    <div class="card-h"><h2>Stato</h2><div class="row"><button class="btn sm" data-a="short-rest">Riposo breve</button><button class="btn sm" data-a="long-rest">Riposo lungo</button></div></div>
+    <div class="stats">
+      <div class="stat"><span class="lbl">PF attuali</span>${inp("c.hp.cur")}</div>
+      <div class="stat"><span class="lbl">PF massimi</span>${inp("c.hp.max")}</div>
+      <div class="stat"><span class="lbl">PF temporanei</span>${inp("c.hp.temp")}</div>
+      <div class="stat"><span class="lbl">Dadi vita</span><span class="v" style="font-size:.9rem" data-live="hd">${LIVE.hd()}</span></div>
+    </div>
+    <div class="row"><input id="hp-amt" type="number" inputmode="numeric" placeholder="Quantità" style="width:110px"><button class="btn" data-a="dmg-self">Danno</button><button class="btn" data-a="heal-self">Cura</button><button class="btn" data-a="temp-self">PF temp.</button></div>
+    ${dead?`<div class="row"><span class="lbl">TS contro morte</span>
+      <span>Successi</span><div class="pips">${[1,2,3].map(i=>`<button class="pip death-s ${c.death.s>=i?"on":""}" data-a="death" data-k="s" data-v="${i}" aria-label="Successo ${i}"></button>`).join("")}</div>
+      <span>Fallimenti</span><div class="pips">${[1,2,3].map(i=>`<button class="pip death-f ${c.death.f>=i?"on":""}" data-a="death" data-k="f" data-v="${i}" aria-label="Fallimento ${i}"></button>`).join("")}</div>
+      <button class="btn sm" data-a="death-roll">Tira TS morte</button></div>`:""}
+    <div class="f"><span class="lbl">Condizioni</span><div class="chips">${CONDITIONS.map(x=>`<button class="chip ${c.conditions.includes(x)?"on":""}" data-a="cond" data-v="${esc(x)}">${x}</button>`).join("")}</div></div>
+    <div class="row"><span class="lbl">Esaurimento</span><div class="seg">${[0,1,2,3,4,5,6].map(i=>`<button class="${c.exhaustion===i?"on":""}" data-a="exh" data-v="${i}">${i}</button>`).join("")}</div>
+      <label class="row" style="gap:6px">${inp("c.inspiration",{type:"checkbox"})} Ispirazione</label></div>
+    <div class="f"><span class="lbl">Effetti temporanei (si riducono a ogni round di combattimento)</span>
+      <div class="chips">${c.effects.map(e=>`<span class="chip static">${esc(e.name)}${e.rounds?` · ${e.rounds} round`:""} <button class="btn ghost sm" data-a="del-effect" data-id="${e.id}" aria-label="Rimuovi">✕</button></span>`).join("")||`<span class="muted">Nessuno</span>`}</div>
+      <div class="row"><input id="eff-name" placeholder="es. Benedetto, Velocità" style="flex:1 1 160px"><input id="eff-rounds" type="number" inputmode="numeric" placeholder="Round" style="width:90px"><button class="btn sm" data-a="add-effect">Aggiungi</button></div></div>
+    ${c.concentration?`<div class="conc"><span>Concentrazione: <b>${esc(c.concentration)}</b></span><button class="btn sm" data-a="end-conc">Interrompi</button></div>`:""}
+  </section>
+
+  <section class="card">
+    <div class="card-h"><h2>Identità</h2><div class="row"><span class="tag">Bonus competenza <b data-live="pb">${sgn(pb(c))}</b></span><button class="btn pri sm" data-a="levelup" ${c.level>=20?"disabled":""}>⬆ Sali di livello</button></div></div>
+    <div class="fields">
+      ${fld("Nome",inp("c.name"))}${fld("Giocatore",inp("c.player"))}${fld("Razza",choice("c.race",RACES))}${fld("Classe",choice("c.cls",Object.keys(CLASS_DATA)))}
+      ${CLASS_DATA[c.cls]?fld(CLASS_DATA[c.cls].sub,choice("c.subclass",CLASS_DATA[c.cls].subs)):fld("Sottoclasse",inp("c.subclass"))}${fld("Livello",inp("c.level",{attrs:'min="1" max="20"'}))}${fld("Background",choice("c.background",BACKGROUNDS))}${fld("Allineamento",choice("c.alignment",ALIGNMENTS))}
+      ${fld("Punti esperienza",inp("c.xp"))}${fld("Dado vita",sel("c.hitDie",[[6,"d6"],[8,"d8"],[10,"d10"],[12,"d12"]],{num:1}))}
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><h2>Caratteristiche</h2><span class="muted" style="font-size:.8rem">Tocca il modificatore per tirare</span></div>
+    <div class="abil">${AB.map(a=>{const t=Number(c.abTemp[a])||0;return `<div class="ab"><span class="lbl" title="${AB_FULL[a]}">${a}</span><button class="mod" data-a="r-ab" data-v="${a}" data-live="mod:${a}">${sgn(amod(c,a))}</button>
+      <span class="eff" data-live="score:${a}">${LIVE.score(a)}</span>
+      <label class="abl"><span>Base</span>${inp("c.ab."+a,{type:"number"})}</label><label class="abl tmp"><span>Temp</span>${inp("c.abTemp."+a,{type:"number"})}</label></div>`}).join("")}</div>
+    ${AB.some(a=>Number(c.abTemp[a]))?`<div class="row" style="justify-content:space-between"><span class="muted" style="font-size:.8rem">I bonus temporanei si azzerano col riposo lungo.</span><button class="btn sm" data-a="clear-temp">Azzera temporanei</button></div>`:`<span class="muted" style="font-size:.8rem">Temp: bonus o malus temporanei (incantesimi, pozioni, maledizioni). Il punteggio base resta separato.</span>`}
+    <div class="stats">
+      <div class="stat"><span class="lbl">Classe armatura</span>${inp("c.ac")}</div>
+      <div class="stat"><span class="lbl">Iniziativa</span><button class="rollv v" style="text-align:center" data-a="r-init" data-live="init">${sgn(initB(c))}</button></div>
+      <div class="stat"><span class="lbl">Bonus iniz. extra</span>${inp("c.initMisc")}</div>
+      <div class="stat"><span class="lbl">Velocità</span>${inp("c.speed")}</div>
+      <div class="stat"><span class="lbl">Percezione passiva</span><span class="v" data-live="passive:percezione">${passive(c,"percezione","SAG")}</span></div>
+      <div class="stat"><span class="lbl">Intuizione passiva</span><span class="v" data-live="passive:intuizione">${passive(c,"intuizione","SAG")}</span></div>
+    </div>
+  </section>
+
+  <div class="grid2">
+  <section class="card">
+    <h2>Tiri salvezza</h2>
+    <div>${AB.map(a=>`<div class="sk"><button class="prof ${c.saves[a]?"p1":""}" data-a="save-prof" data-v="${a}" aria-label="Competenza ${AB_FULL[a]}"></button><span class="name">${AB_FULL[a]}</span><button class="rollv" data-a="r-save" data-v="${a}" data-live="save:${a}">${sgn(saveB(c,a))}</button></div>`).join("")}</div>
+    <h2>Attacchi</h2>
+    <div class="list">${c.attacks.map(at=>`<details class="it" data-id="${at.id}" ${isOpen(at.id)}><summary><span class="t" data-live="sumtitle:c.attacks#${at.id}.name">${esc(at.name||"Senza nome")}</span>
+       <button class="btn sm" data-a="r-atk" data-id="${at.id}">${sgn(Number(at.bonus)||0)} colpire</button><button class="btn sm" data-a="r-dmg" data-id="${at.id}">${esc(at.dmg||"—")}</button></summary>
+       <div class="body"><div class="fields">${fld("Nome",inp(`c.attacks#${at.id}.name`))}${fld("Bonus colpire",inp(`c.attacks#${at.id}.bonus`,{type:"number"}))}${fld("Danni",inp(`c.attacks#${at.id}.dmg`,{ph:"1d8+3"}))}${fld("Tipo / note",inp(`c.attacks#${at.id}.type`))}</div>
+       <div><button class="btn sm danger" data-a="del" data-l="attacks" data-id="${at.id}">Elimina</button></div></div></details>`).join("")||`<div class="empty">Nessun attacco.</div>`}</div>
+    <div><button class="btn sm" data-a="add" data-l="attacks">+ Attacco</button></div>
+  </section>
+  <section class="card">
+    <h2>Abilità</h2>
+    <p class="muted" style="margin:0;font-size:.8rem">Tocca il cerchio: vuoto, competente, maestria.</p>
+    <div>${SKILLS.map(([k,n,a])=>`<div class="sk"><button class="prof ${c.skills[k]===1?"p1":c.skills[k]===2?"p2":""}" data-a="skill-prof" data-v="${k}" aria-label="Competenza ${n}"></button><span class="name">${n} <span class="ab3">${a}</span></span><button class="rollv" data-a="r-skill" data-v="${k}" data-live="skill:${k}">${sgn(skillB(c,k,a))}</button></div>`).join("")}</div>
+  </section>
+  </div>
+
+  <section class="card">
+    <h2>Competenze e linguaggi</h2>
+    <div class="grid2">${fld("Competenze (armi, armature, strumenti)",ta("c.profs","",3))}${fld("Linguaggi",ta("c.languages","",3))}</div>
+  </section>
+  <section class="card">
+    <h2>Personalità e storia</h2>
+    <div class="grid2">${fld("Tratti",ta("c.traits.personality","",2))}${fld("Ideali",ta("c.traits.ideals","",2))}${fld("Legami",ta("c.traits.bonds","",2))}${fld("Difetti",ta("c.traits.flaws","",2))}</div>
+    ${fld("Storia del personaggio",ta("c.backstory","",5))}
+    ${fld("Note del personaggio",ta("c.notes","Appunti personali, segreti, obiettivi…",5))}
+  </section>`;
+}
+
+/* ---- Inventario ---- */
+function vInv(){
+  const c=ch();const items=c.inv;
+  return `
+  <section class="card">
+    <div class="card-h"><h2>Monete</h2><span class="tag gold">Totale <b data-live="wealth">${LIVE.wealth()}</b></span></div>
+    <div class="stats">${COINS.map(([k,n])=>`<div class="stat"><span class="lbl">${n} (${k})</span>${inp("c.coins."+k)}</div>`).join("")}</div>
+    <div class="row"><input id="coin-amt" type="number" inputmode="numeric" placeholder="Importo" style="width:110px">${sel0("coin-type",COINS.map(([k,n])=>[k,n]),"mo")}<button class="btn sm" data-a="coin" data-v="1">Aggiungi</button><button class="btn sm" data-a="coin" data-v="-1">Spendi</button></div>
+  </section>
+  <section class="card">
+    <div class="card-h"><h2>Oggetti</h2><span class="tag">Peso <b data-live="weight">${LIVE.weight()}</b></span></div>
+    <div class="list">${items.map(i=>`<details class="it" data-id="${i.id}" ${isOpen(i.id)}><summary>
+        <span class="tag num">×${esc(i.qty)}</span><span class="t" data-live="sumtitle:c.inv#${i.id}.name">${esc(i.name||"Senza nome")}</span>
+        ${i.equipped?`<span class="tag acc">equip.</span>`:""}
+        <button class="btn sm ghost" data-a="qty" data-id="${i.id}" data-v="-1" aria-label="Meno">−</button><button class="btn sm ghost" data-a="qty" data-id="${i.id}" data-v="1" aria-label="Più">+</button></summary>
+      <div class="body"><div class="fields">${fld("Nome",inp(`c.inv#${i.id}.name`))}${fld("Quantità",inp(`c.inv#${i.id}.qty`,{type:"number"}))}${fld("Peso unitario (kg)",inp(`c.inv#${i.id}.weight`,{type:"number",attrs:'step="0.1"'}))}
+        <label class="f"><span class="lbl">Equipaggiato</span>${inp(`c.inv#${i.id}.equipped`,{type:"checkbox"})}</label></div>
+        ${fld("Note",ta(`c.inv#${i.id}.notes`,"Proprietà, cariche, valore…",2))}
+        <div class="row"><button class="btn sm danger" data-a="del" data-l="inv" data-id="${i.id}">Elimina</button><button class="btn sm" data-a="to-quest" data-id="${i.id}">Sposta tra gli oggetti missione</button></div></div></details>`).join("")||`<div class="empty">Zaino vuoto.</div>`}</div>
+    <div class="row"><input id="new-item" placeholder="Nuovo oggetto, es. Corda di canapa 15 m" style="flex:1 1 200px"><button class="btn pri sm" data-a="add-item">Aggiungi</button></div>
+  </section>`;
+}
+function sel0(id,opts,v){return `<select id="${id}" style="width:auto">${opts.map(([val,l])=>`<option value="${val}" ${val===v?"selected":""}>${esc(l)}</option>`).join("")}</select>`}
+
+/* ---- Capacità ---- */
+const RECH={none:"Sempre attiva",short:"Riposo breve",long:"Riposo lungo",day:"All'alba"};
+function vCap(){
+  const c=ch();
+  return `<section class="card">
+    <div class="card-h"><h2>Capacità e privilegi</h2><button class="btn sm pri" data-a="add" data-l="features">+ Capacità</button></div>
+    <p class="muted" style="margin:0;font-size:.85rem">Privilegi di classe, tratti razziali, talenti. Imposta gli usi per tracciarli: si ricaricano con i riposi.</p>
+    <div class="list">${c.features.map(f=>`<details class="it" data-id="${f.id}" ${isOpen(f.id)}><summary><span class="t" data-live="sumtitle:c.features#${f.id}.name">${esc(f.name||"Senza nome")}</span>
+      ${Number(f.max)>0?`<div class="pips">${Array.from({length:Math.min(Number(f.max),20)},(_,i)=>`<button class="pip ${i<f.max-f.used?"":"used"}" data-a="use-feat" data-id="${f.id}" data-v="${i}" aria-label="Uso ${i+1}"></button>`).join("")}</div>`:""}
+      <span class="tag">${RECH[f.recharge]||""}</span></summary>
+      <div class="body"><div class="fields">${fld("Nome",inp(`c.features#${f.id}.name`))}${fld("Fonte",inp(`c.features#${f.id}.source`,{ph:"Classe, razza, talento"}))}${fld("Usi massimi",inp(`c.features#${f.id}.max`,{type:"number"}))}${fld("Si ricarica con",sel(`c.features#${f.id}.recharge`,Object.entries(RECH)))}</div>
+      ${fld("Descrizione",ta(`c.features#${f.id}.desc`,"",3))}<div><button class="btn sm danger" data-a="del" data-l="features" data-id="${f.id}">Elimina</button></div></div></details>`).join("")||`<div class="empty">Nessuna capacità.</div>`}</div>
+  </section>`;
+}
+
+/* ---- Magie ---- */
+function vMagie(){
+  const c=ch();const list=c.spells.filter(s=>!UI.onlyPrepared||s.prepared||Number(s.level)===0);
+  const byL={};list.forEach(s=>{(byL[s.level]=byL[s.level]||[]).push(s)});
+  const lvName=l=>Number(l)===0?"Trucchetti":`Livello ${l}`;
+  return `
+  <section class="card">
+    <div class="card-h"><h2>Incantatore</h2></div>
+    <div class="stats">
+      <div class="stat"><span class="lbl">Caratteristica</span>${sel("c.spellAbility",AB.map(a=>[a,a]))}</div>
+      <div class="stat"><span class="lbl">CD tiro salvezza</span><span class="v" data-live="dc">${spellDC(c)}</span></div>
+      <div class="stat"><span class="lbl">Attacco magico</span><button class="rollv v" style="text-align:center" data-a="r-satk" data-live="satk">${sgn(spellAtk(c))}</button></div>
+    </div>
+    ${c.concentration?`<div class="conc"><span>Concentrazione: <b>${esc(c.concentration)}</b></span><button class="btn sm" data-a="end-conc">Interrompi</button></div>`:""}
+  </section>
+  <section class="card">
+    <div class="card-h"><h2>Slot incantesimo</h2><button class="btn sm" data-a="reset-slots">Ripristina tutti</button></div>
+    <div class="slots">${[1,2,3,4,5,6,7,8,9].map(l=>{const s=c.slots[l];return `<div class="slot"><div class="row" style="justify-content:space-between"><b>Liv. ${l}</b><span class="row" style="gap:4px"><span class="lbl">max</span>${inp(`c.slots.${l}.max`,{type:"number",attrs:'min="0" max="9"'})}</span></div>
+      <div class="pips">${Array.from({length:Math.min(Number(s.max)||0,9)},(_,i)=>`<button class="pip ${i<s.max-s.used?"":"used"}" data-a="slot" data-v="${l}" data-i="${i}" aria-label="Slot ${l}"></button>`).join("")||`<span class="muted" style="font-size:.8rem">—</span>`}</div></div>`}).join("")}</div>
+  </section>
+  <div class="seg" role="tablist" style="justify-self:start"><button class="${UI.spellView!=="comp"?"on":""}" data-a="sp-view" data-v="mine">I miei incantesimi (${c.spells.length})</button><button class="${UI.spellView==="comp"?"on":""}" data-a="sp-view" data-v="comp">Compendio SRD</button></div>
+  ${UI.spellView==="comp"?vCompendio():`<section class="card">
+    <div class="card-h"><h2>I miei incantesimi</h2><div class="row"><label class="row" style="gap:6px;font-size:.85rem"><input type="checkbox" id="only-prep" data-a="only-prep" ${UI.onlyPrepared?"checked":""}> Solo preparati</label><button class="btn sm" data-a="sp-view" data-v="comp">Cerca nel compendio</button><button class="btn sm pri" data-a="add" data-l="spells">+ Personalizzato</button></div></div>
+    ${Object.keys(byL).sort((a,b)=>a-b).map(l=>`<div class="list"><h3>${lvName(l)} ${Number(l)>0?`<span class="tag num">${c.slots[l].max-c.slots[l].used}/${c.slots[l].max} slot</span>`:""}</h3>${byL[l].map(s=>`<details class="it" data-id="${s.id}" ${isOpen(s.id)}><summary>
+        ${Number(s.level)>0?`<input type="checkbox" title="Preparato" aria-label="Preparato" data-b="c.spells#${s.id}.prepared" id="${fid("c.spells#"+s.id+".prepared")}" ${s.prepared?"checked":""}>`:""}
+        <span class="t tt"><span data-live="sumtitle:c.spells#${s.id}.name">${esc(s.name||"Senza nome")}</span>${s.brief?`<small>${esc(s.brief)}</small>`:""}</span>${s.conc?`<span class="tag gold">C</span>`:""}${s.ritual?`<span class="tag">R</span>`:""}
+        ${s.dmg?`<button class="btn sm ghost" data-a="r-spell" data-id="${s.id}">${esc(s.dmg)}</button>`:""}<button class="btn sm" data-a="cast" data-id="${s.id}">Lancia</button></summary>
+      <div class="body">${spellCard(mySpellView(s),{noBrief:1,trMine:s.srd&&!s.tr?s.id:null})}
+        <details class="it" data-id="ed-${s.id}" ${isOpen("ed-"+s.id)}><summary><span class="t">Modifica</span></summary><div class="body">
+        <div class="fields">${fld("Nome",inp(`c.spells#${s.id}.name`))}${fld("Livello",sel(`c.spells#${s.id}.level`,[0,1,2,3,4,5,6,7,8,9].map(i=>[i,i===0?"Trucchetto":i]),{num:1}))}${fld("Scuola",sel(`c.spells#${s.id}.school`,SCHOOLS.map(x=>[x,x||"—"])))}
+        ${fld("Tempo di lancio",inp(`c.spells#${s.id}.time`))}${fld("Gittata",inp(`c.spells#${s.id}.range`))}${fld("Componenti",inp(`c.spells#${s.id}.comp`))}${fld("Materiali",inp(`c.spells#${s.id}.material`))}${fld("Durata",inp(`c.spells#${s.id}.duration`))}${fld("Danni / cura",inp(`c.spells#${s.id}.dmg`,{ph:"es. 8d6"}))}
+        <label class="f"><span class="lbl">Concentrazione</span>${inp(`c.spells#${s.id}.conc`,{type:"checkbox"})}</label><label class="f"><span class="lbl">Rituale</span>${inp(`c.spells#${s.id}.ritual`,{type:"checkbox"})}</label></div>
+        ${fld("Descrizione",ta(`c.spells#${s.id}.desc`,"",5))}${fld("Ai livelli superiori",ta(`c.spells#${s.id}.higher`,"",2))}<div><button class="btn sm danger" data-a="del" data-l="spells" data-id="${s.id}">Elimina</button></div></div></details>
+      </div></details>`).join("")}</div>`).join("")||`<div class="empty">Nessun incantesimo. Aprili dal <button class="btn sm" data-a="sp-view" data-v="comp">Compendio SRD</button> o creane uno personalizzato.</div>`}
+  </section>`}`;
+}
+
+/* ============ compendio incantesimi (SRD 5.1) ============ */
+let SPELLDB=null,spellErr=false;
+const TR=(()=>{try{return JSON.parse(ls.get("ddf-tr")||"{}")}catch(e){return{}}})();
+function upgradeMySpells(){if(!SPELLDB)return;const by=Object.fromEntries(SPELLDB.map(o=>[o.i,o]));let n=0;for(const k of S.campaigns)for(const c of k.chars)for(const s of c.spells){const o=s.srd&&by[s.srd];if(!o||!o.it)continue;if(!s.tr){s.tr=true;s.name=o.n;s.desc=o.x;s.higher=o.h||"";s.material=o.m||"";n++}if(!s.brief){s.brief=o.b;n++}}if(n){S.campaigns.forEach(k=>k.updatedAt=Date.now());save()}}
+function loadSpells(){if(SPELLDB||loadSpells.p)return;loadSpells.p=fetch("spells.json").then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{SPELLDB=d;upgradeMySpells();if(UI.tab==="magie")renderView()}).catch(()=>{spellErr=true;loadSpells.p=null;if(UI.tab==="magie")renderView()})}
+const CLASSES=["Bardo","Chierico","Druido","Mago","Paladino","Ranger","Stregone","Warlock"];
+function guessClass(cls){const s=(cls||"").toLowerCase();return CLASSES.find(k=>s.includes(k.toLowerCase()))||""}
+function dbView(o){const t=o.it?{}:(TR[o.i]||{});return{brief:o.b||"",name:t.n||o.n,orig:o.en||(t.n?o.n:""),level:o.l,school:o.s,time:o.t,range:o.r,comp:o.c,material:o.m||"",duration:o.d,conc:!!o.k,ritual:!!o.ri,classes:o.cls,desc:t.x||o.x,higher:t.h||o.h||"",dmg:o.dm||"",ts:o.ts||"",dt:o.dt||"",srd:o.i,translated:!!(o.it||t.x)}}
+function mySpellView(s){return{brief:s.brief||"",name:s.name,level:s.level,school:s.school,time:s.time,range:s.range,comp:s.comp,material:s.material||"",duration:s.duration,conc:s.conc,ritual:s.ritual,classes:s.classes||[],desc:s.desc,higher:s.higher||"",dmg:s.dmg,ts:s.ts||"",srd:s.srd,translated:!!s.tr}}
+const TS_IT={STR:"Forza",DEX:"Destrezza",CON:"Costituzione",INT:"Intelligenza",WIS:"Saggezza",CHA:"Carisma"};
+function para(t){return String(t||"").split(/\n{2,}/).map(p=>`<p style="margin:0">${esc(p).replace(/\n/g,"<br>")}</p>`).join("")}
+function spellCard(v,opt={}){
+  const lv=Number(v.level)===0?`Trucchetto di ${(v.school||"").toLowerCase()}`:`${v.school||"Incantesimo"} di ${v.level}° livello`;
+  const row=(k,val)=>val?`<div><span class="lbl">${k}</span><div>${esc(val)}</div></div>`:"";
+  return `<div class="spellcard">${v.brief&&!opt.noBrief?`<div class="sp-brief">${esc(v.brief)}</div>`:""}<div class="muted" style="font-style:italic">${esc(lv)}${v.ritual?" (rituale)":""}${v.orig?` · ${esc(v.orig)}`:""}</div>
+    <div class="sp-grid">${row("Tempo di lancio",v.time)}${row("Gittata",v.range)}${row("Componenti",v.comp+(v.material?` (${v.material})`:""))}${row("Durata",(v.conc?"Concentrazione, ":"")+(v.duration||""))}
+    ${v.ts?row("Tiro salvezza",TS_IT[v.ts]||v.ts):""}${v.dmg?row("Danni / cura",v.dmg+(v.dt?` ${v.dt}`:"")):""}${v.classes&&v.classes.length?row("Classi",v.classes.join(", ")):""}</div>
+    <div class="sp-desc">${para(v.desc)||`<span class="muted">Nessuna descrizione.</span>`}${v.higher?`<p style="margin:0"><b>Ai livelli superiori.</b> ${esc(v.higher)}</p>`:""}</div>
+    ${v.srd&&!v.translated&&SAMPLE!==false?`<div><button class="btn sm" data-a="sp-tr" data-i="${esc(v.srd)}" ${opt.trMine?`data-mine="${opt.trMine}"`:""}>Traduci in italiano</button></div>`:""}</div>`;
+}
+function compFiltered(){const f=UI.comp;const q=f.q.trim().toLowerCase();
+  return SPELLDB.filter(o=>(f.lvl===""||o.l===Number(f.lvl))&&(!f.cls||o.cls.includes(f.cls))&&(!f.sch||o.s===f.sch)&&(!f.conc||o.k)&&(!f.rit||o.ri)&&(!q||o.n.toLowerCase().includes(q)||(o.en||"").toLowerCase().includes(q)||((TR[o.i]||{}).n||"").toLowerCase().includes(q)))}
+function vCompendio(){
+  const c=ch();if(UI.comp.cls===null)UI.comp.cls=guessClass(c.cls);
+  if(!SPELLDB){loadSpells();return `<section class="card"><h2>Compendio incantesimi</h2><div class="empty">${spellErr?"Non riesco a caricare l'elenco degli incantesimi. Riprova più tardi.":"Carico 319 incantesimi…"}</div></section>`}
+  const f=UI.comp;
+  return `<section class="card">
+    <div class="card-h"><h2>Compendio incantesimi</h2><span class="muted" style="font-size:.8rem">319 incantesimi del Regolamento base (SRD 5.1)</span></div>
+    <div class="fields">
+      <label class="f"><span class="lbl">Cerca</span><input id="comp-q" value="${esc(f.q)}" placeholder="Nome, es. Palla di Fuoco" autocomplete="off"></label>
+      <label class="f"><span class="lbl">Classe</span><select id="comp-cls"><option value="">Tutte</option>${CLASSES.map(k=>`<option ${k===f.cls?"selected":""}>${k}</option>`).join("")}</select></label>
+      <label class="f"><span class="lbl">Livello</span><select id="comp-lvl"><option value="">Tutti</option>${[0,1,2,3,4,5,6,7,8,9].map(i=>`<option value="${i}" ${String(i)===String(f.lvl)?"selected":""}>${i===0?"Trucchetti":i+"°"}</option>`).join("")}</select></label>
+      <label class="f"><span class="lbl">Scuola</span><select id="comp-sch"><option value="">Tutte</option>${SCHOOLS.filter(Boolean).map(k=>`<option ${k===f.sch?"selected":""}>${k}</option>`).join("")}</select></label>
+    </div>
+    <div class="row"><label class="row" style="gap:6px;font-size:.85rem"><input type="checkbox" id="comp-conc" ${f.conc?"checked":""}> Concentrazione</label><label class="row" style="gap:6px;font-size:.85rem"><input type="checkbox" id="comp-rit" ${f.rit?"checked":""}> Rituale</label></div>
+    <div id="comp-results">${compResults()}</div>
+    <p class="muted" style="margin:0;font-size:.72rem">Contiene materiale tratto dal System Reference Document 5.1 di Wizards of the Coast LLC, con licenza CC-BY-4.0, tradotto in italiano. Distanze convertite in metri.</p>
+  </section>`;
+}
+function compResults(){
+  const c=ch();const list=compFiltered();const shown=list.slice(0,UI.comp.limit);const mine=new Set(c.spells.map(s=>s.srd).filter(Boolean));
+  return `<div class="list">${shown.map(o=>{const v=dbView(o);const id="cp-"+o.i;return `<details class="it" data-id="${id}" ${isOpen(id)}><summary>
+      <span class="tag num">${o.l===0?"T":o.l+"°"}</span><span class="t tt"><span>${esc(v.name)}</span>${v.brief?`<small>${esc(v.brief)}</small>`:""}</span>${o.k?`<span class="tag gold">C</span>`:""}${o.ri?`<span class="tag">R</span>`:""}
+      ${mine.has(o.i)?`<span class="tag acc">✓ nel libro</span>`:`<button class="btn sm" data-a="sp-learn" data-i="${o.i}">Aggiungi</button>`}</summary>
+    <div class="body">${spellCard(v,{noBrief:1})}</div></details>`}).join("")||`<div class="empty">Nessun incantesimo con questi filtri.</div>`}</div>
+    ${list.length>shown.length?`<div style="margin-top:8px"><button class="btn sm" data-a="comp-more">Mostra altri (${list.length-shown.length})</button></div>`:`<div class="muted" style="font-size:.8rem;margin-top:6px">${list.length} incantesimi</div>`}`;
+}
+function rerenderComp(){const el=$("#comp-results");if(!el)return;el.innerHTML=compResults();el.querySelectorAll("details[data-id]").forEach(d=>d.addEventListener("toggle",()=>{d.open?UI.open.add(d.dataset.id):UI.open.delete(d.dataset.id)}))}
+const COMP_IDS={"comp-q":"q","comp-cls":"cls","comp-lvl":"lvl","comp-sch":"sch","comp-conc":"conc","comp-rit":"rit"};
+document.addEventListener("input",e=>{const k=COMP_IDS[e.target.id];if(!k)return;UI.comp[k]=e.target.type==="checkbox"?e.target.checked:e.target.value;UI.comp.limit=50;rerenderComp()});
+let SAMPLE=(window.claude&&window.claude.use)?null:false;
+async function getSample(){if(SAMPLE)return SAMPLE;if(SAMPLE===false||!window.claude||!claude.use){SAMPLE=false;return null}try{SAMPLE=(await claude.use("sample"))||false}catch(e){SAMPLE=false}return SAMPLE||null}
+
+/* ---- Combattimento ---- */
+function cmbStats(e){const k=camp();const c=e.charId&&k.chars.find(x=>x.id===e.charId);return c?{name:c.name,hp:c.hp.cur,max:c.hp.max,temp:c.hp.temp,ac:c.ac,c}:{name:e.name,hp:e.hp,max:e.max,temp:0,ac:e.ac,c:null}}
+function vCombat(){
+  const k=camp();const cb=k.combat;const L=cb.list;
+  return `<section class="card">
+    <div class="card-h"><h2>Iniziativa</h2><div class="row"><span class="tag acc">Round <b class="num">${cb.round}</b></span>
+      <button class="btn sm" data-a="cmb-prev" ${L.length?"":"disabled"}>◀</button><button class="btn pri sm" data-a="cmb-next" ${L.length?"":"disabled"}>${cb.started?"Turno successivo ▶":"Inizia ▶"}</button></div></div>
+    <div class="list">${L.map((e,i)=>{const s=cmbStats(e);const p=s.max?clamp(s.hp/s.max*100,0,100):0;return `<div class="cmb ${cb.started&&i===cb.turn?"cur":""} ${s.hp<=0?"down":""}">
+      <div class="ini">${inp(`k.combat.list#${e.id}.init`,{type:"number",attrs:'aria-label="Iniziativa"'})}</div>
+      <div style="min-width:0;display:grid;gap:4px"><div class="row" style="gap:6px"><b style="overflow:hidden;text-overflow:ellipsis">${esc(s.name)}</b>${s.c?`<span class="tag acc">PG</span>`:""}<span class="tag">CA ${esc(s.ac)}</span>${cb.started&&i===cb.turn?`<span class="tag gold">di turno</span>`:""}</div>
+        <div class="hpbar" style="height:16px;min-width:0"><i style="width:${p}%;background:${hpColor(p)}"></i><span style="line-height:16px;font-size:.72rem">${s.hp}/${s.max}${s.temp?` +${s.temp}`:""}</span></div>
+        ${s.c&&(s.c.conditions.length||s.c.concentration)?`<div class="chips">${s.c.conditions.map(x=>`<span class="tag acc">${esc(x)}</span>`).join("")}${s.c.concentration?`<span class="tag gold">◎ ${esc(s.c.concentration)}</span>`:""}</div>`:""}
+        ${!s.c?`<input placeholder="Condizioni / note" data-b="k.combat.list#${e.id}.note" id="${fid("k.combat.list#"+e.id+".note")}" value="${esc(e.note||"")}" style="padding:3px 7px;font-size:.82rem">`:""}</div>
+      <div class="dmg"><input type="number" inputmode="numeric" id="cd-${e.id}" placeholder="PF" aria-label="Quantità"><button class="btn sm" data-a="cmb-dmg" data-id="${e.id}">Danno</button><button class="btn sm" data-a="cmb-heal" data-id="${e.id}">Cura</button><button class="btn sm ghost" data-a="cmb-del" data-id="${e.id}" aria-label="Rimuovi">✕</button></div>
+    </div>`}).join("")||`<div class="empty">Nessun combattente. Aggiungi il gruppo e i nemici, poi ordina per iniziativa.</div>`}</div>
+    <div class="row"><button class="btn sm" data-a="cmb-party">+ Gruppo (tira iniziativa)</button><button class="btn sm" data-a="cmb-sort">Ordina</button><button class="btn sm danger" data-a="cmb-clear" ${L.length?"":"disabled"}>Termina combattimento</button></div>
+  </section>
+  <section class="card">
+    <h2>Aggiungi nemici o PNG</h2>
+    <div class="fields">
+      <label class="f"><span class="lbl">Nome</span><input id="m-name" placeholder="Goblin"></label>
+      <label class="f"><span class="lbl">Quanti</span><input id="m-n" type="number" inputmode="numeric" value="1" min="1"></label>
+      <label class="f"><span class="lbl">Bonus iniziativa</span><input id="m-ini" type="number" inputmode="numeric" value="0"></label>
+      <label class="f"><span class="lbl">PF (o formula)</span><input id="m-hp" placeholder="7 o 2d6"></label>
+      <label class="f"><span class="lbl">CA</span><input id="m-ac" type="number" inputmode="numeric" value="12"></label>
+    </div>
+    <div><button class="btn pri sm" data-a="cmb-add">Aggiungi al combattimento</button></div>
+  </section>`;
+}
+
+/* ---- Missioni ---- */
+function vQuest(){
+  const k=camp();const order={attiva:0,sospesa:1,completata:2,fallita:3};
+  const qs=[...k.quests].sort((a,b)=>(order[a.status]??9)-(order[b.status]??9));
+  return `<section class="card">
+    <div class="card-h"><h2>Missioni</h2><button class="btn sm pri" data-a="add" data-l="quests" data-r="k">+ Missione</button></div>
+    <div class="list">${qs.map(q=>{const done=q.objectives.filter(o=>o.done).length;return `<details class="it" data-id="${q.id}" ${isOpen(q.id)}><summary><span class="t" data-live="sumtitle:k.quests#${q.id}.title">${esc(q.title||"Senza titolo")}</span>
+      ${q.objectives.length?`<span class="tag num">${done}/${q.objectives.length}</span>`:""}<span class="tag ${q.status==="attiva"?"acc":q.status==="completata"?"gold":""}">${QSTATUS[q.status]}</span></summary>
+      <div class="body"><div class="fields">${fld("Titolo",inp(`k.quests#${q.id}.title`))}${fld("Commissionata da",inp(`k.quests#${q.id}.giver`))}${fld("Stato",sel(`k.quests#${q.id}.status`,Object.entries(QSTATUS)))}${fld("Ricompensa",inp(`k.quests#${q.id}.reward`))}</div>
+      ${fld("Descrizione",ta(`k.quests#${q.id}.desc`,"",3))}
+      <div class="f"><span class="lbl">Obiettivi</span>${q.objectives.map(o=>`<div class="row" style="flex-wrap:nowrap">${inp(`k.quests#${q.id}.objectives#${o.id}.done`,{type:"checkbox"})}${inp(`k.quests#${q.id}.objectives#${o.id}.text`)}<button class="btn sm ghost" data-a="del-obj" data-q="${q.id}" data-id="${o.id}" aria-label="Rimuovi">✕</button></div>`).join("")}
+        <div><button class="btn sm" data-a="add-obj" data-q="${q.id}">+ Obiettivo</button></div></div>
+      <div><button class="btn sm danger" data-a="del" data-l="quests" data-r="k" data-id="${q.id}">Elimina missione</button></div></div></details>`}).join("")||`<div class="empty">Nessuna missione.</div>`}</div>
+  </section>
+  <section class="card">
+    <div class="card-h"><h2>Oggetti missione</h2><button class="btn sm pri" data-a="add" data-l="questItems" data-r="k">+ Oggetto</button></div>
+    <div class="list">${k.questItems.map(i=>`<details class="it" data-id="${i.id}" ${isOpen(i.id)}><summary><span class="t" data-live="sumtitle:k.questItems#${i.id}.name">${esc(i.name||"Senza nome")}</span>${i.holder?`<span class="tag">${esc(i.holder)}</span>`:""}</summary>
+      <div class="body"><div class="fields">${fld("Nome",inp(`k.questItems#${i.id}.name`))}${fld("Chi lo custodisce",inp(`k.questItems#${i.id}.holder`))}${fld("Missione collegata",inp(`k.questItems#${i.id}.quest`,{attrs:'list="quest-names"'}))}</div>
+      ${fld("Descrizione",ta(`k.questItems#${i.id}.desc`,"",3))}<div><button class="btn sm danger" data-a="del" data-l="questItems" data-r="k" data-id="${i.id}">Elimina</button></div></div></details>`).join("")||`<div class="empty">Nessun oggetto missione.</div>`}</div>
+    <datalist id="quest-names">${k.quests.map(q=>`<option value="${esc(q.title)}">`).join("")}</datalist>
+  </section>`;
+}
+
+/* ---- Diario ---- */
+function vDiario(){
+  const k=camp();const ss=[...k.sessions].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  return `<section class="card"><h2>Note della campagna</h2>${ta("k.notes","Appunti rapidi: nomi, indizi, cose da ricordare per la prossima sessione…",6)}</section>
+  <section class="card">
+    <div class="card-h"><h2>Diario delle sessioni</h2><button class="btn sm pri" data-a="add" data-l="sessions" data-r="k">+ Sessione</button></div>
+    <div class="list">${ss.map(s=>`<details class="it" data-id="${s.id}" ${isOpen(s.id)}><summary><span class="tag num">${esc(s.date)}</span><span class="t" data-live="sumtitle:k.sessions#${s.id}.title">${esc(s.title||"Sessione")}</span></summary>
+      <div class="body"><div class="fields">${fld("Data",inp(`k.sessions#${s.id}.date`,{type:"date"}))}${fld("Titolo",inp(`k.sessions#${s.id}.title`))}</div>
+      ${fld("Cosa è successo",ta(`k.sessions#${s.id}.text`,"",7))}<div><button class="btn sm danger" data-a="del" data-l="sessions" data-r="k" data-id="${s.id}">Elimina</button></div></div></details>`).join("")||`<div class="empty">Nessuna sessione registrata.</div>`}</div>
+  </section>`;
+}
+
+/* ---- Mondo ---- */
+function vMondo(){
+  const k=camp();
+  const block=(title,list,key,fields)=>`<section class="card"><div class="card-h"><h2>${title}</h2><button class="btn sm pri" data-a="add" data-l="${key}" data-r="k">+ Aggiungi</button></div>
+    <input id="q-${key}" placeholder="Cerca…" data-a="filter" data-l="${key}">
+    <div class="list" id="list-${key}">${list.map(x=>`<details class="it" data-id="${x.id}" data-s="${esc((x.name+" "+Object.values(x).join(" ")).toLowerCase())}" ${isOpen(x.id)}><summary><span class="t" data-live="sumtitle:k.${key}#${x.id}.name">${esc(x.name||"Senza nome")}</span>${x[fields[1][0]]?`<span class="tag">${esc(x[fields[1][0]])}</span>`:""}</summary>
+      <div class="body"><div class="fields">${fields.filter(f=>f[0]!=="notes").map(([f,l])=>fld(l,inp(`k.${key}#${x.id}.${f}`))).join("")}</div>${fld("Note",ta(`k.${key}#${x.id}.notes`,"",3))}
+      <div><button class="btn sm danger" data-a="del" data-l="${key}" data-r="k" data-id="${x.id}">Elimina</button></div></div></details>`).join("")||`<div class="empty">Ancora vuoto.</div>`}</div></section>`;
+  return block("Personaggi non giocanti",k.npcs,"npcs",[["name","Nome"],["role","Ruolo"],["place","Dove si trova"],["attitude","Atteggiamento"]])+
+         block("Luoghi",k.places,"places",[["name","Nome"],["kind","Tipo"]]);
+}
+
+/* ---- tiradadi ---- */
+function renderDrawer(){
+  const d=$("#drawer");d.hidden=!UI.drawer;if(!UI.drawer)return;
+  d.innerHTML=`<div class="wrap">
+    <div class="card-h"><h2>Tiradadi</h2><button class="btn ghost" data-a="dice" aria-label="Chiudi">✕</button></div>
+    <div class="row"><span class="lbl">Prossimo d20</span><div class="seg">${[["norm","Normale"],["adv","Vantaggio"],["dis","Svantaggio"]].map(([v,l])=>`<button class="${UI.diceMode===v?"on":""}" data-a="dmode" data-v="${v}">${l}</button>`).join("")}</div></div>
+    <div class="dgrid">${[4,6,8,10,12,20,100].map(n=>`<button class="btn" data-a="qd" data-v="${n}">d${n}</button>`).join("")}</div>
+    <form class="row" id="dice-form"><input id="dice-expr" placeholder="Formula, es. 2d6+3 o 8d6" style="flex:1 1 180px" autocomplete="off"><button class="btn pri">Tira</button></form>
+    <div class="hist">${UI.hist.map(h=>`<div><span>${esc(h.label)} <span class="muted" style="font-size:.75rem">${esc(h.detail)}</span></span><b class="num">${h.total}</b></div>`).join("")||`<span class="muted">I tiri compariranno qui.</span>`}</div>
+  </div>`;
+}
+document.addEventListener("submit",e=>{if(e.target.id==="dice-form"){e.preventDefault();const v=$("#dice-expr").value.trim();if(!v)return;
+  if(/^d20([+-]\d+)?$/i.test(v)||/^1d20([+-]\d+)?$/i.test(v)){const b=Number((v.match(/[+-]\d+$/)||["0"])[0]);d20(v,b)}else roll(v,v)}});
+
+/* ============ azioni ============ */
+function listOf(btn){return (btn.dataset.r==="k"?camp():ch())[btn.dataset.l]}
+const NEW={
+  attacks:()=>({id:uid(),name:"Nuovo attacco",bonus:0,dmg:"1d6",type:""}),
+  features:()=>({id:uid(),name:"Nuova capacità",source:"",max:0,used:0,recharge:"long",desc:""}),
+  spells:()=>({id:uid(),name:"Nuovo incantesimo",level:1,school:"",time:"1 azione",range:"",comp:"",duration:"",conc:false,ritual:false,prepared:true,dmg:"",desc:""}),
+  quests:()=>({id:uid(),title:"Nuova missione",giver:"",status:"attiva",reward:"",desc:"",objectives:[]}),
+  questItems:()=>({id:uid(),name:"Nuovo oggetto",holder:"",quest:"",desc:""}),
+  sessions:()=>({id:uid(),date:today(),title:`Sessione ${camp().sessions.length+1}`,text:""}),
+  npcs:()=>({id:uid(),name:"Nuovo PNG",role:"",place:"",attitude:"",notes:""}),
+  places:()=>({id:uid(),name:"Nuovo luogo",kind:"",notes:""}),
+};
+const numIn=id=>{const v=Number(($(id)||{}).value);return Number.isFinite(v)?v:0};
+const A={
+  tab:b=>{UI.tab=b.dataset.v;window.scrollTo({top:0});render();return "noRender"},
+  dice:()=>{UI.drawer=!UI.drawer;renderDrawer();if(UI.drawer)setTimeout(()=>{const i=$("#dice-expr");if(i&&matchMedia("(pointer:fine)").matches)i.focus()},30);return "noRender"},
+  dmode:b=>{UI.diceMode=b.dataset.v;renderDrawer();return "noRender"},
+  qd:b=>{const n=Number(b.dataset.v);if(n===20)d20("d20",0);else roll("d"+n,"1d"+n);return "noRender"},
+  "r-ab":b=>{d20(`Prova di ${AB_FULL[b.dataset.v]}`,amod(ch(),b.dataset.v));return "noRender"},
+  "r-save":b=>{d20(`TS ${AB_FULL[b.dataset.v]}`,saveB(ch(),b.dataset.v));return "noRender"},
+  "r-skill":b=>{const s=SKILLS.find(x=>x[0]===b.dataset.v);d20(s[1],skillB(ch(),s[0],s[2]));return "noRender"},
+  "r-init":()=>{d20("Iniziativa",initB(ch()));return "noRender"},
+  "r-satk":()=>{d20("Attacco magico",spellAtk(ch()));return "noRender"},
+  "r-atk":(b,e)=>{e.preventDefault();const a=ch().attacks.find(x=>x.id===b.dataset.id);d20(`${a.name}: colpire`,Number(a.bonus)||0);return "noRender"},
+  "r-dmg":(b,e)=>{e.preventDefault();const a=ch().attacks.find(x=>x.id===b.dataset.id);roll(`${a.name}: danni ${a.type||""}`,a.dmg);return "noRender"},
+  "r-spell":(b,e)=>{e.preventDefault();const s=ch().spells.find(x=>x.id===b.dataset.id);roll(s.name,s.dmg);return "noRender"},
+  "save-prof":b=>{const c=ch();c.saves[b.dataset.v]=!c.saves[b.dataset.v]},
+  "skill-prof":b=>{const c=ch();c.skills[b.dataset.v]=((c.skills[b.dataset.v]||0)+1)%3},
+  cond:b=>{const c=ch(),v=b.dataset.v;c.conditions=c.conditions.includes(v)?c.conditions.filter(x=>x!==v):[...c.conditions,v]},
+  exh:b=>{ch().exhaustion=Number(b.dataset.v)},
+  "add-effect":()=>{const n=$("#eff-name").value.trim();if(!n)return "noRender";ch().effects.push({id:uid(),name:n,rounds:Math.max(0,numIn("#eff-rounds"))})},
+  "del-effect":b=>{const c=ch();c.effects=c.effects.filter(e=>e.id!==b.dataset.id)},
+  "end-conc":()=>{ch().concentration=""},
+  "dmg-self":()=>{damage(ch(),numIn("#hp-amt"))},
+  "heal-self":()=>{heal(ch(),numIn("#hp-amt"))},
+  "temp-self":()=>{const c=ch();c.hp.temp=Math.max(c.hp.temp,Math.max(0,numIn("#hp-amt")))},
+  "quick-hp":()=>{const c=ch();if(!c)return "noRender";modal(`<h2>${esc(c.name)}</h2><p class="num" style="margin:0">${c.hp.cur}/${c.hp.max} PF${c.hp.temp?` (+${c.hp.temp} temp.)`:""}</p>
+    <input id="q-amt" type="number" inputmode="numeric" placeholder="Quantità"><div class="row"><button class="btn pri" data-a="q-dmg">Danno</button><button class="btn" data-a="q-heal">Cura</button><button class="btn" data-a="q-temp">PF temporanei</button><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
+  "q-dmg":()=>{damage(ch(),numIn("#q-amt"));closeModal()},
+  "q-heal":()=>{heal(ch(),numIn("#q-amt"));closeModal()},
+  "q-temp":()=>{const c=ch();c.hp.temp=Math.max(c.hp.temp,Math.max(0,numIn("#q-amt")));closeModal()},
+  death:b=>{const c=ch(),k=b.dataset.k,v=Number(b.dataset.v);c.death[k]=c.death[k]>=v?v-1:v;checkDeath(c)},
+  "death-roll":()=>{const c=ch();const r=rnd(20);let msg;
+    if(r===20){c.hp.cur=1;c.death={s:0,f:0};msg="20 naturale: torni in piedi con 1 PF!"}
+    else if(r===1){c.death.f=Math.min(3,c.death.f+2);msg="1 naturale: due fallimenti"}
+    else if(r>=10){c.death.s=Math.min(3,c.death.s+1);msg="Successo"}else{c.death.f=Math.min(3,c.death.f+1);msg="Fallimento"}
+    pushHist("TS contro morte",r,msg);toast(`<div>TS contro morte</div><div class="big">${r}</div><div>${msg}</div>`);checkDeath(c)},
+  "short-rest":()=>{shortRestModal();return "noRender"},
+  "hd-roll":()=>{const c=ch();if(c.level-c.hdUsed<=0){toast("Nessun dado vita rimasto");return "noRender"}
+    const r=rnd(c.hitDie),gain=Math.max(0,r+amod(c,"COS"));c.hdUsed++;heal(c,gain);pushHist(`Dado vita d${c.hitDie}`,gain,`d${c.hitDie}[${r}] ${sgn(amod(c,"COS"))}`);
+    toast(`<div>Dado vita</div><div class="big">+${gain}</div><div>d${c.hitDie} [${r}] ${sgn(amod(c,"COS"))}</div>`);touch();render();shortRestModal();return "noRender"},
+  "short-done":()=>{const c=ch();c.features.forEach(f=>{if(f.recharge==="short")f.used=0});closeModal();toast("Riposo breve completato: capacità da riposo breve ricaricate.")},
+  "long-rest":()=>{confirmBox("Riposo lungo: PF al massimo, slot e capacità ripristinati, recuperi metà dei dadi vita e 1 livello di esaurimento. Effetti e bonus temporanei alle caratteristiche terminano.","Riposa",()=>{const c=ch();
+    c.hp.cur=c.hp.max;c.hp.temp=0;c.death={s:0,f:0};for(let i=1;i<=9;i++)c.slots[i].used=0;c.features.forEach(f=>{if(f.recharge!=="none")f.used=0});
+    c.hdUsed=Math.max(0,c.hdUsed-Math.max(1,Math.floor(c.level/2)));c.exhaustion=Math.max(0,c.exhaustion-1);c.concentration="";c.effects=[];AB.forEach(a=>c.abTemp[a]=0);toast("Riposo lungo completato.")});return "noRender"},
+  "confirm-ok":()=>{const f=pendingConfirm;pendingConfirm=null;closeModal();if(f)f()},
+  "modal-close":()=>{closeModal();return "noRender"},
+  add:b=>{const it=NEW[b.dataset.l]();listOf(b).push(it);UI.open.add(it.id);setTimeout(()=>{const el=document.querySelector(`details[data-id="${it.id}"] input`);if(el){el.focus();el.select&&el.select();el.scrollIntoView({block:"center"})}},50)},
+  del:b=>{const L=listOf(b);const it=L.find(x=>x.id===b.dataset.id);confirmBox(`Eliminare <b>${esc(it.name||it.title||"questo elemento")}</b>?`,"Elimina",()=>{const i=L.indexOf(it);if(i>=0)L.splice(i,1)});return "noRender"},
+  "add-item":()=>{const n=$("#new-item").value.trim();if(!n)return "noRender";ch().inv.push({id:uid(),name:n,qty:1,weight:0,equipped:false,notes:""})},
+  qty:(b,e)=>{e.preventDefault();const i=ch().inv.find(x=>x.id===b.dataset.id);i.qty=Math.max(0,(Number(i.qty)||0)+Number(b.dataset.v))},
+  "to-quest":b=>{const c=ch();const i=c.inv.find(x=>x.id===b.dataset.id);camp().questItems.push({id:uid(),name:i.name,holder:c.name,quest:"",desc:i.notes||""});c.inv=c.inv.filter(x=>x!==i);toast("Spostato tra gli oggetti missione.")},
+  coin:b=>{const c=ch();const t=$("#coin-type").value;const n=numIn("#coin-amt")*Number(b.dataset.v);
+    if((Number(c.coins[t])||0)+n<0){toast("Monete insufficienti di quel tipo.");return "noRender"}c.coins[t]=(Number(c.coins[t])||0)+n},
+  "use-feat":(b,e)=>{e.preventDefault();const f=ch().features.find(x=>x.id===b.dataset.id);const left=f.max-f.used;const i=Number(b.dataset.v);
+    f.used=i<left?f.used+1:Math.max(0,f.used-1)},
+  slot:b=>{const s=ch().slots[b.dataset.v];const left=s.max-s.used;s.used=Number(b.dataset.i)<left?s.used+1:Math.max(0,s.used-1)},
+  "reset-slots":()=>{const c=ch();for(let i=1;i<=9;i++)c.slots[i].used=0},
+  "only-prep":b=>{UI.onlyPrepared=b.checked;render();return "noRender"},
+  cast:(b,e)=>{e.preventDefault();const c=ch(),s=c.spells.find(x=>x.id===b.dataset.id);const lv=Number(s.level);
+    if(lv===0){afterCast(c,s,0);return}
+    const opts=[];for(let l=lv;l<=9;l++){const sl=c.slots[l];if(sl.max-sl.used>0)opts.push(l)}
+    if(!opts.length){modal(`<h2>${esc(s.name)}</h2><p>Nessuno slot disponibile di livello ${lv} o superiore.</p>${s.ritual?`<button class="btn" data-a="cast-ritual" data-id="${s.id}">Lancia come rituale (senza slot)</button>`:""}<button class="btn" data-a="modal-close">Chiudi</button>`);return "noRender"}
+    modal(`<h2>Lancia ${esc(s.name)}</h2><p class="muted" style="margin:0">Scegli lo slot da spendere.</p><div class="row">${opts.map(l=>`<button class="btn ${l===lv?"pri":""}" data-a="cast-at" data-id="${s.id}" data-v="${l}">Livello ${l} (${c.slots[l].max-c.slots[l].used} liberi)</button>`).join("")}
+      ${s.ritual?`<button class="btn" data-a="cast-ritual" data-id="${s.id}">Come rituale</button>`:""}</div><div><button class="btn ghost" data-a="modal-close">Annulla</button></div>`);return "noRender"},
+  "cast-at":b=>{const c=ch(),s=c.spells.find(x=>x.id===b.dataset.id);const l=Number(b.dataset.v);c.slots[l].used++;closeModal();afterCast(c,s,l)},
+  "cast-ritual":b=>{const c=ch(),s=c.spells.find(x=>x.id===b.dataset.id);closeModal();afterCast(c,s,0,true)},
+  // combattimento
+  "cmb-party":()=>{const k=camp();let n=0;for(const c of k.chars){if(k.combat.list.some(e=>e.charId===c.id))continue;const r=rnd(20),t=r+initB(c);k.combat.list.push({id:uid(),charId:c.id,name:c.name,init:t,hp:0,max:0,ac:c.ac,note:""});pushHist(`Iniziativa ${c.name}`,t,`d20[${r}] ${sgn(initB(c))}`);n++}
+    sortCombat();toast(n?`${n} personaggi aggiunti con iniziativa tirata.`:"Il gruppo è già in combattimento.")},
+  "cmb-add":()=>{const k=camp();const name=$("#m-name").value.trim()||"Nemico";const n=clamp(numIn("#m-n")||1,1,30);const bonus=numIn("#m-ini");const hpRaw=$("#m-hp").value.trim()||"1";const ac=numIn("#m-ac");
+    for(let i=1;i<=n;i++){const hr=/^\d+$/.test(hpRaw)?Number(hpRaw):(parseRoll(hpRaw)||{total:1}).total;const r=rnd(20);
+      k.combat.list.push({id:uid(),charId:null,name:n>1?`${name} ${i}`:name,init:r+bonus,hp:Math.max(1,hr),max:Math.max(1,hr),ac,note:""})}
+    sortCombat();toast(`${n>1?n+" ":""}${esc(name)} aggiunt${n>1?"i":"o"}.`)},
+  "cmb-sort":()=>{sortCombat()},
+  "cmb-next":()=>{const cb=camp().combat;if(!cb.list.length)return;if(!cb.started){cb.started=true;announceTurn();return}cb.turn++;if(cb.turn>=cb.list.length){cb.turn=0;newRound()}announceTurn()},
+  "cmb-prev":()=>{const cb=camp().combat;if(!cb.list.length)return;cb.turn--;if(cb.turn<0){cb.turn=cb.list.length-1;cb.round=Math.max(1,cb.round-1)}},
+  "cmb-dmg":b=>{cmbHp(b.dataset.id,-1)},
+  "cmb-heal":b=>{cmbHp(b.dataset.id,1)},
+  "cmb-del":b=>{const cb=camp().combat;const i=cb.list.findIndex(e=>e.id===b.dataset.id);cb.list.splice(i,1);if(i<cb.turn)cb.turn--;if(cb.turn>=cb.list.length)cb.turn=0},
+  "cmb-clear":()=>{confirmBox("Terminare il combattimento e svuotare la lista? I PF dei personaggi restano come sono.","Termina",()=>{camp().combat={round:1,turn:0,list:[],started:false}});return "noRender"},
+  "add-obj":b=>{const q=camp().quests.find(x=>x.id===b.dataset.q);const o={id:uid(),text:"",done:false};q.objectives.push(o);setTimeout(()=>{const el=$("#"+fid(`k.quests#${q.id}.objectives#${o.id}.text`));if(el)el.focus()},50)},
+  "del-obj":b=>{const q=camp().quests.find(x=>x.id===b.dataset.q);q.objectives=q.objectives.filter(o=>o.id!==b.dataset.id)},
+  // menu
+  menu:()=>{modal(`<h2>Gestione</h2>
+    <div class="f"><span class="lbl">Personaggi</span><div class="row"><button class="btn" data-a="new-char">Nuovo personaggio</button><button class="btn danger" data-a="del-char" ${ch()?"":"disabled"}>Elimina personaggio attuale</button></div></div>
+    <div class="f"><span class="lbl">Campagne</span><div class="row"><button class="btn" data-a="new-camp">Nuova campagna</button><button class="btn" data-a="ren-camp">Rinomina campagna</button><button class="btn danger" data-a="del-camp">Elimina campagna</button></div></div>
+    <div class="f"><span class="lbl">Backup</span><div class="row"><button class="btn" data-a="export">Esporta tutto (JSON)</button><button class="btn" data-a="import">Importa backup</button></div>
+    <p class="muted" style="margin:0;font-size:.8rem">I dati si salvano da soli. Esporta un backup ogni tanto, o per passare la scheda a un amico.</p></div>
+    <div><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
+  "new-char":()=>{modal(`<h2>Nuovo personaggio</h2><input id="nc-name" placeholder="Nome del personaggio"><div class="row"><button class="btn pri" data-a="nc-ok">Crea</button><button class="btn ghost" data-a="modal-close">Annulla</button></div>`);return "noRender"},
+  "nc-ok":()=>{const k=camp();const c=newChar($("#nc-name").value.trim()||"Nuovo eroe");k.chars.push(c);k.activeChar=c.id;closeModal();UI.tab="scheda"},
+  "del-char":()=>{const c=ch();confirmBox(`Eliminare <b>${esc(c.name)}</b> e tutta la sua scheda? Non si può annullare.`,"Elimina",()=>{const k=camp();k.chars=k.chars.filter(x=>x.id!==c.id);k.combat.list=k.combat.list.filter(e=>e.charId!==c.id);k.activeChar=k.chars[0]?k.chars[0].id:null});return "noRender"},
+  "new-camp":()=>{modal(`<h2>Nuova campagna</h2><input id="ncp-name" placeholder="Nome della campagna"><div class="row"><button class="btn pri" data-a="ncp-ok">Crea</button><button class="btn ghost" data-a="modal-close">Annulla</button></div>`);return "noRender"},
+  "ncp-ok":()=>{const k=newCamp($("#ncp-name").value.trim()||"Nuova campagna");S.campaigns.push(k);S.active=k.id;closeModal()},
+  "ren-camp":()=>{modal(`<h2>Rinomina campagna</h2><input id="rc-name" value="${esc(camp().name)}"><div class="row"><button class="btn pri" data-a="rc-ok">Salva</button><button class="btn ghost" data-a="modal-close">Annulla</button></div>`);return "noRender"},
+  "rc-ok":()=>{camp().name=$("#rc-name").value.trim()||camp().name;delete camp().__demo;closeModal()},
+  "del-camp":()=>{const k=camp();confirmBox(`Eliminare la campagna <b>${esc(k.name)}</b> con tutti i personaggi, le missioni e il diario? Non si può annullare.`,"Elimina",()=>{S.campaigns=S.campaigns.filter(x=>x.id!==k.id);pendingDel.add(k.id);S.active=S.campaigns[0]?S.campaigns[0].id:null});return "noRender"},
+  export:()=>{doExport();return "noRender"},
+  import:()=>{$("#file-import").click();return "noRender"},
+  "imp-replace":()=>{const d=pendingImport;pendingImport=null;S.campaigns.forEach(k=>pendingDel.add(k.id));S.campaigns=d;S.active=d[0].id;migrate();d.forEach(k=>pendingDel.delete(k.id));closeModal();toast("Backup importato.")},
+  "imp-add":()=>{const d=pendingImport;pendingImport=null;for(const k of d){if(S.campaigns.some(x=>x.id===k.id))k.id=uid();S.campaigns.push(k)}migrate();S.active=d[0].id;closeModal();toast("Campagne aggiunte.")},
+};
+function checkDeath(c){if(c.death.s>=3){toast(`<b>${esc(c.name)}</b> è stabile.`);}else if(c.death.f>=3){toast(`<b>${esc(c.name)}</b> è morto. Serve una resurrezione…`,5000)}}
+function afterCast(c,s,lvl,ritual){
+  let msg=`<div>${esc(s.name)}${lvl?` · slot liv. ${lvl}`:ritual?" · rituale":""}</div>`;
+  if(s.conc){if(c.concentration&&c.concentration!==s.name)msg+=`<div>Concentrazione su ${esc(c.concentration)} interrotta.</div>`;c.concentration=s.name;msg+=`<div>Ora sei concentrato.</div>`}
+  if(s.dmg){const r=parseRoll(s.dmg);if(r){msg+=`<div class="big">${r.total}</div><div style="font-size:.8rem">${esc(r.detail)}</div>`;pushHist(s.name,r.total,r.detail)}}
+  toast(msg,4000);touch();render();
+}
+function shortRestModal(){const c=ch();const left=c.level-c.hdUsed;
+  modal(`<h2>Riposo breve</h2><p style="margin:0">PF <b class="num">${c.hp.cur}/${c.hp.max}</b> · Dadi vita rimasti <b class="num">${left}/${c.level}</b> (d${c.hitDie} ${sgn(amod(c,"COS"))})</p>
+  <div class="row"><button class="btn" data-a="hd-roll" ${left>0&&c.hp.cur<c.hp.max?"":"disabled"}>Spendi 1 dado vita</button><button class="btn pri" data-a="short-done">Termina riposo</button></div>
+  <p class="muted" style="margin:0;font-size:.8rem">Alla fine si ricaricano le capacità impostate su "Riposo breve".</p>`)}
+function sortCombat(){const cb=camp().combat;const cur=cb.list[cb.turn];cb.list.sort((a,b)=>(Number(b.init)||0)-(Number(a.init)||0));cb.turn=cb.started?Math.max(0,cb.list.indexOf(cur)):0}
+function newRound(){const k=camp();k.combat.round++;const ended=[];
+  for(const c of k.chars){c.effects=c.effects.filter(e=>{if(!e.rounds)return true;e.rounds--;if(e.rounds<=0){ended.push(`${e.name} (${c.name})`);return false}return true})}
+  if(ended.length)setTimeout(()=>toast(`<div>Round ${k.combat.round}</div><div>Terminati: ${esc(ended.join(", "))}</div>`,4500),1200)}
+function announceTurn(){const cb=camp().combat;const e=cb.list[cb.turn];if(e)toast(`<div>Round ${cb.round}</div><div class="big" style="font-size:1.2rem">Tocca a ${esc(cmbStats(e).name)}</div>`,1800)}
+function cmbHp(id,sign){const e=camp().combat.list.find(x=>x.id===id);const n=numIn("#cd-"+id);if(!n)return;
+  const c=e.charId&&camp().chars.find(x=>x.id===e.charId);
+  if(c){sign<0?damage(c,n):heal(c,n)}else{e.hp=clamp(e.hp+sign*n,0,e.max);if(e.hp===0)toast(`${esc(e.name)} è a terra.`)}}
+
+
+/* ============ salita di livello ============ */
+const FULL_SLOTS=[[],[2],[3],[4,2],[4,3],[4,3,2],[4,3,3],[4,3,3,1],[4,3,3,2],[4,3,3,3,1],[4,3,3,3,2],[4,3,3,3,2,1],[4,3,3,3,2,1],[4,3,3,3,2,1,1],[4,3,3,3,2,1,1],[4,3,3,3,2,1,1,1],[4,3,3,3,2,1,1,1],[4,3,3,3,2,1,1,1,1],[4,3,3,3,3,1,1,1,1],[4,3,3,3,3,2,1,1,1],[4,3,3,3,3,2,2,1,1]];
+function slotTable(kind,lvl){if(kind==="full")return FULL_SLOTS[lvl]||[];if(kind==="half")return lvl<2?[]:FULL_SLOTS[Math.ceil(lvl/2)]||[];if(kind==="third")return lvl<3?[]:FULL_SLOTS[Math.ceil(lvl/3)]||[];return null}
+function guessCaster(cls){const s=(cls||"").toLowerCase();
+  if(/mago|chierico|druido|bardo|stregone|wizard|cleric|druid|bard|sorcerer/.test(s))return"full";
+  if(/paladino|ranger|paladin/.test(s))return"half";
+  if(/cavaliere mistico|mistificatore arcano|eldritch|arcane trickster/.test(s))return"third";return"none"}
+function luFeatRow(){const id=uid();return `<div class="lu-row" data-feat="${id}"><input placeholder="Nome capacità, es. Attacco Extra" class="lf-name"><input type="number" inputmode="numeric" placeholder="Usi" class="lf-max" min="0"><select class="lf-rech rech">${Object.entries(RECH).map(([k,l])=>`<option value="${k}" ${k==="long"?"selected":""}>${l}</option>`).join("")}</select><button class="btn sm ghost" data-a="lu-del-row" aria-label="Rimuovi">✕</button><textarea class="lf-desc" placeholder="Descrizione (facoltativa)"></textarea></div>`}
+function luSpellRow(maxLv){return `<div class="lu-row sp" data-spell="1"><input placeholder="Nome incantesimo" class="ls-name"><select class="ls-lv">${[0,1,2,3,4,5,6,7,8,9].map(i=>`<option value="${i}" ${i===Math.min(1,maxLv)?"selected":""}>${i===0?"Trucchetto":"Livello "+i}</option>`).join("")}</select><button class="btn sm ghost" data-a="lu-del-row" aria-label="Rimuovi">✕</button></div>`}
+function levelUpModal(){
+  const c=ch();const L=Number(c.level)||1,N=L+1;const con=amod(c,"COS");const avg=Math.max(1,Math.floor(c.hitDie/2)+1+con);
+  const asi=[4,8,12,16,19].includes(N);const kind=guessCaster(c.cls);
+  const pbUp=pb({level:N})>pb(c);
+  const abOpts=`<option value="">—</option>`+AB.map(a=>`<option value="${a}">${AB_FULL[a]} (base ${c.ab[a]})</option>`).join("");
+  modal(`<div class="card-h"><h2>${esc(c.name)}: livello ${L} → ${N}</h2><button class="btn ghost" data-a="modal-close" aria-label="Chiudi">✕</button></div>
+  <p class="muted" style="margin:0;font-size:.85rem">Compila solo le sezioni che ti servono, poi premi "Applica". Nulla cambia finché non confermi.${pbUp?` <b>Il bonus di competenza sale a ${sgn(pb({level:N}))}.</b>`:""}</p>
+
+  <div class="lu-sec"><h3><span class="n">1</span>Classe</h3>
+    <div class="fields">${`<label class="f"><span class="lbl">Classe (per multiclasse scrivi es. "Guerriero 3 / Mago 1")</span><input id="lu-cls" value="${esc(c.cls)}"></label>`}
+    <label class="f"><span class="lbl">Sottoclasse</span><input id="lu-sub" value="${esc(c.subclass)}"></label></div></div>
+
+  <div class="lu-sec"><h3><span class="n">2</span>Punti ferita</h3>
+    <div class="row"><input id="lu-hp" type="number" inputmode="numeric" value="${avg}" style="width:90px" aria-label="PF guadagnati">
+      <button class="btn sm" data-a="lu-hp-avg">Media (${avg})</button><button class="btn sm" data-a="lu-hp-roll">Tira d${c.hitDie} ${sgn(con)}</button>
+      <label class="row" style="gap:6px"><span class="lbl">Dado vita</span><select id="lu-hd" style="width:auto">${[6,8,10,12].map(d=>`<option value="${d}" ${d===c.hitDie?"selected":""}>d${d}</option>`).join("")}</select></label></div>
+    <span class="muted" style="font-size:.8rem" id="lu-hp-note">PF massimi: ${c.hp.max} → <b class="num" id="lu-hp-new">${c.hp.max+avg}</b></span></div>
+
+  <div class="lu-sec"><h3><span class="n">3</span>Aumento dei punteggi o talento</h3>
+    <label class="row" style="gap:6px"><input type="checkbox" id="lu-asi-on" ${asi?"checked":""}> Questo livello dà un aumento${asi?" (livello "+N+")":""}</label>
+    <div class="fields"><label class="f"><span class="lbl">+1 a</span><select id="lu-asi1">${abOpts}</select></label><label class="f"><span class="lbl">+1 a (stessa = +2)</span><select id="lu-asi2">${abOpts}</select></label>
+    <label class="f"><span class="lbl">Oppure talento</span><input id="lu-feat" placeholder="es. Robustezza"></label></div></div>
+
+  <div class="lu-sec"><h3><span class="n">4</span>Nuove capacità di classe</h3>
+    <div class="list" id="lu-feats">${luFeatRow()}</div><div><button class="btn sm" data-a="lu-add-feat">+ Altra capacità</button></div>
+    ${c.features.some(f=>Number(f.max)>0)?`<span class="lbl">Aumenta usi esistenti</span><div class="list">${c.features.filter(f=>Number(f.max)>0).map(f=>`<label class="row" style="gap:8px;flex-wrap:nowrap"><span style="flex:1;min-width:0">${esc(f.name)}</span><input type="number" inputmode="numeric" data-lu-uses="${f.id}" value="${f.max}" style="width:70px" aria-label="Usi ${esc(f.name)}"></label>`).join("")}</div>`:""}</div>
+
+  <div class="lu-sec"><h3><span class="n">5</span>Slot incantesimo</h3>
+    <label class="row" style="gap:6px"><span class="lbl">Tabella</span><select id="lu-table" data-a="lu-table" style="width:auto">
+      ${[["none","Lascia come sono"],["full","Incantatore completo (Bardo, Chierico, Druido, Mago, Stregone)"],["half","Mezzo incantatore (Paladino, Ranger)"],["third","Un terzo (Cavaliere Mistico, Mistificatore Arcano)"]].map(([k,l])=>`<option value="${k}" ${k===kind?"selected":""}>${l}</option>`).join("")}</select></label>
+    <div class="slotgrid">${[1,2,3,4,5,6,7,8,9].map(l=>`<label class="f"><span class="lbl">${l}°</span><input type="number" inputmode="numeric" min="0" id="lu-slot-${l}" value="${c.slots[l].max}"></label>`).join("")}</div>
+    <span class="muted" style="font-size:.8rem">Per il Warlock (magia del patto) imposta i valori a mano.</span></div>
+
+  <div class="lu-sec"><h3><span class="n">6</span>Nuovi incantesimi</h3>
+    <div class="list" id="lu-spells">${luSpellRow(9)}</div><div><button class="btn sm" data-a="lu-add-spell">+ Altro incantesimo</button></div>
+    <span class="muted" style="font-size:.8rem">Dettagli come gittata e durata li completi poi nella scheda Magie.</span></div>
+
+  <div class="lu-sec"><h3><span class="n">7</span>Nuove competenze</h3>
+    <div class="fields"><label class="f"><span class="lbl">Abilità</span><select id="lu-skill"><option value="">—</option>${SKILLS.filter(([k])=>(c.skills[k]||0)<2).map(([k,n])=>`<option value="${k}">${n}${c.skills[k]===1?" (maestria)":""}</option>`).join("")}</select></label>
+    <label class="f"><span class="lbl">Altre competenze o linguaggi</span><input id="lu-profs" placeholder="es. Armature pesanti"></label></div></div>
+
+  <div class="lu-sec"><h3><span class="n">8</span>Note</h3><textarea id="lu-notes" rows="2" placeholder="Cosa è cambiato, da ricordare (finisce nelle note del personaggio)"></textarea></div>
+
+  <div class="row" style="justify-content:flex-end"><button class="btn" data-a="modal-close">Annulla</button><button class="btn pri" data-a="lu-apply">Applica livello ${N}</button></div>`,"wide");
+  if(kind!=="none")luFillTable(kind,N);
+}
+function luFillTable(kind,N){const t=slotTable(kind,N);if(!t)return;for(let l=1;l<=9;l++){const el=$("#lu-slot-"+l);if(el)el.value=t[l-1]||0}}
+function luHpPreview(){const c=ch();const v=Number($("#lu-hp").value)||0;const el=$("#lu-hp-new");if(el)el.textContent=c.hp.max+v}
+document.addEventListener("input",e=>{if(e.target.id==="lu-hp")luHpPreview()});
+document.addEventListener("change",e=>{if(e.target.id==="lu-table"){const N=(Number(ch().level)||1)+1;if(e.target.value==="none"){const c=ch();for(let l=1;l<=9;l++)$("#lu-slot-"+l).value=c.slots[l].max}else luFillTable(e.target.value,N)}});
+Object.assign(A,{
+  levelup:()=>{levelUpModal();return "noRender"},
+  "sp-view":b=>{UI.spellView=b.dataset.v;render();return "noRender"},
+  "comp-more":()=>{UI.comp.limit+=50;rerenderComp();return "noRender"},
+  "sp-learn":(b,e)=>{e.preventDefault();const o=SPELLDB.find(x=>x.i===b.dataset.i);const c=ch();const v=dbView(o);
+    const m=amod(c,c.spellAbility);const dmg=(v.dmg||"").replace(/\+?MOD/,m?sgn(m):"");
+    c.spells.push({id:uid(),srd:o.i,tr:v.translated,brief:v.brief,name:v.name,level:o.l,school:o.s,time:o.t,range:o.r,comp:o.c,material:v.material,duration:o.d,conc:v.conc,ritual:v.ritual,prepared:true,dmg,desc:v.desc,higher:v.higher,ts:v.ts,classes:o.cls});
+    toast(`${esc(v.name)} aggiunto ai tuoi incantesimi.`);touch();rerenderComp();
+    const sb=document.querySelector('[data-a="sp-view"][data-v="mine"]');if(sb)sb.textContent=`I miei incantesimi (${c.spells.length})`;return "noRender"},
+  "sp-tr":async b=>{const sm=await getSample();if(!sm){toast("La traduzione automatica non è disponibile qui.");render();return}
+    const o=SPELLDB?SPELLDB.find(x=>x.i===b.dataset.i):null;const mine=b.dataset.mine?ch().spells.find(x=>x.id===b.dataset.mine):null;
+    const src=o?{n:o.n,x:o.x,h:o.h||""}:mine?{n:mine.name,x:mine.desc,h:mine.higher||""}:null;if(!src)return;
+    b.disabled=true;b.textContent="Traduco…";
+    try{const r=await sm.json([{role:"user",content:`Traduci in italiano questo incantesimo di Dungeons & Dragons 5a edizione. Usa il nome ufficiale italiano dell'incantesimo e i termini di gioco ufficiali italiani (tiro salvezza, azione bonus, punti ferita, ecc.). Converti piedi in metri (5 piedi = 1,5 m) e miglia in km. Rispondi solo con un oggetto JSON {"n": nome, "x": descrizione, "h": testo ai livelli superiori o stringa vuota}. Mantieni i paragrafi separati da una riga vuota.\n\n${JSON.stringify(src)}`}],{modelTier:"quick"});
+      if(!r||typeof r.x!=="string")throw new Error();TR[b.dataset.i]={n:String(r.n||src.n),x:r.x,h:String(r.h||"")};ls.set("ddf-tr",JSON.stringify(TR));
+      for(const k of S.campaigns)for(const c of k.chars)for(const s of c.spells)if(s.srd===b.dataset.i&&!s.tr){s.name=TR[b.dataset.i].n;s.desc=r.x;s.higher=TR[b.dataset.i].h;s.tr=true}
+      touch();render();toast("Tradotto.")}
+    catch(err){b.disabled=false;b.textContent="Traduci in italiano";toast(err&&err.code==="not_granted"?"Traduzione non consentita.":err&&err.code==="rate_limited"?"Troppe richieste, riprova tra poco.":"Traduzione non riuscita, riprova.")}},
+  "clear-temp":()=>{const c=ch();AB.forEach(a=>c.abTemp[a]=0)},
+  "lu-hp-avg":()=>{const c=ch();$("#lu-hp").value=Math.max(1,Math.floor(Number($("#lu-hd").value)/2)+1+amod(c,"COS"));luHpPreview();return "noRender"},
+  "lu-hp-roll":()=>{const c=ch();const d=Number($("#lu-hd").value);const r=rnd(d);const v=Math.max(1,r+amod(c,"COS"));$("#lu-hp").value=v;luHpPreview();pushHist(`PF livello (d${d})`,v,`d${d}[${r}] ${sgn(amod(c,"COS"))}`);toast(`<div>PF nuovo livello</div><div class="big">+${v}</div><div style="font-size:.8rem">d${d} [${r}] ${sgn(amod(c,"COS"))}</div>`);return "noRender"},
+  "lu-add-feat":()=>{$("#lu-feats").insertAdjacentHTML("beforeend",luFeatRow());$("#lu-feats").lastElementChild.querySelector("input").focus();return "noRender"},
+  "lu-add-spell":()=>{$("#lu-spells").insertAdjacentHTML("beforeend",luSpellRow(9));$("#lu-spells").lastElementChild.querySelector("input").focus();return "noRender"},
+  "lu-del-row":b=>{b.closest(".lu-row").remove();return "noRender"},
+  "lu-table":()=>"noRender",
+  "lu-apply":()=>{
+    const c=ch();const L=Number(c.level)||1,N=L+1;const done=[];
+    c.cls=$("#lu-cls").value.trim();c.subclass=$("#lu-sub").value.trim();
+    c.hitDie=Number($("#lu-hd").value)||c.hitDie;
+    const hp=Math.max(0,Math.floor(Number($("#lu-hp").value)||0));c.hp.max+=hp;c.hp.cur+=hp;done.push(`+${hp} PF massimi`);
+    c.level=N;
+    if($("#lu-asi-on").checked){for(const id of ["#lu-asi1","#lu-asi2"]){const a=$(id).value;if(a){c.ab[a]=Math.min(20,(Number(c.ab[a])||0)+1)}}
+      const a1=$("#lu-asi1").value,a2=$("#lu-asi2").value;if(a1||a2)done.push(a1&&a1===a2?`${a1} +2`:[a1,a2].filter(Boolean).map(a=>a+" +1").join(", "));
+      const ft=$("#lu-feat").value.trim();if(ft){c.features.push({id:uid(),name:ft,source:`Talento (liv. ${N})`,max:0,used:0,recharge:"none",desc:""});done.push(`talento ${ft}`)}}
+    document.querySelectorAll("#lu-feats .lu-row").forEach(r=>{const n=r.querySelector(".lf-name").value.trim();if(!n)return;
+      c.features.push({id:uid(),name:n,source:`${c.cls||"Classe"} ${N}`,max:Math.max(0,Number(r.querySelector(".lf-max").value)||0),used:0,recharge:r.querySelector(".lf-rech").value,desc:r.querySelector(".lf-desc").value.trim()});done.push(n)});
+    document.querySelectorAll("[data-lu-uses]").forEach(el=>{const f=c.features.find(x=>x.id===el.dataset.luUses);const v=Math.max(0,Number(el.value)||0);if(f&&v!==Number(f.max)){f.max=v;f.used=Math.min(f.used,v)}});
+    let slotCh=false;for(let l=1;l<=9;l++){const v=Math.max(0,Math.min(9,Number($("#lu-slot-"+l).value)||0));if(v!==Number(c.slots[l].max)){slotCh=true;c.slots[l].max=v;c.slots[l].used=Math.min(c.slots[l].used,v)}}
+    if(slotCh)done.push("slot aggiornati");
+    let ns=0;document.querySelectorAll("#lu-spells .lu-row").forEach(r=>{const n=r.querySelector(".ls-name").value.trim();if(!n)return;ns++;
+      c.spells.push({id:uid(),name:n,level:Number(r.querySelector(".ls-lv").value),school:"",time:"1 azione",range:"",comp:"",duration:"",conc:false,ritual:false,prepared:true,dmg:"",desc:""})});
+    if(ns)done.push(`${ns} incantesim${ns>1?"i":"o"}`);
+    const sk=$("#lu-skill").value;if(sk){c.skills[sk]=Math.min(2,(c.skills[sk]||0)+1);done.push(SKILLS.find(x=>x[0]===sk)[1])}
+    const pr=$("#lu-profs").value.trim();if(pr){c.profs=(c.profs?c.profs+", ":"")+pr;done.push(pr)}
+    const nt=$("#lu-notes").value.trim();c.notes=(c.notes?c.notes+"\n\n":"")+`Livello ${N}: ${done.join(", ")}${nt?". "+nt:""}`;
+    closeModal();toast(`<div>${esc(c.name)} è ora di</div><div class="big">livello ${N}</div><div style="font-size:.8rem">${esc(done.join(" · "))}</div>`,5000);
+  },
+});
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-a]");if(!b)return;
+  if(b.tagName==="INPUT"&&b.type!=="checkbox")return;
+  const fn=A[b.dataset.a];if(!fn)return;
+  const r=fn(b,e);
+  if(r instanceof Promise)return;
+  if(r!=="noRender"){touch();render()}
+});
+document.addEventListener("input",e=>{const el=e.target;if(el.dataset&&el.dataset.a==="filter"){const q=el.value.toLowerCase();document.querySelectorAll(`#list-${el.dataset.l}>details`).forEach(d=>d.hidden=q&&!d.dataset.s.includes(q))}});
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){if(!$("#modal").hidden)closeModal();else if(UI.drawer){UI.drawer=false;renderDrawer()}}
+  if(e.key==="Enter"&&e.target.tagName==="INPUT"){const map={"hp-amt":"dmg-self","q-amt":"q-dmg","nc-name":"nc-ok","ncp-name":"ncp-ok","rc-name":"rc-ok","new-item":"add-item","eff-name":"add-effect"};const a=map[e.target.id];if(a){e.preventDefault();const r=A[a]({dataset:{}},e);if(r!=="noRender"){touch();render()}}}
+});
+$("#sel-camp").addEventListener("change",e=>{S.active=e.target.value;save();render()});
+$("#sel-char").addEventListener("change",e=>{const k=camp();if(k){k.activeChar=e.target.value;touch();render()}});
+
+/* ============ backup ============ */
+async function doExport(){
+  const data=JSON.stringify({app:"taccuino-dnd",v:1,exportedAt:new Date().toISOString(),campaigns:S.campaigns},null,2);
+  const name=`taccuino-dnd-${today()}.json`;
+  try{if(window.claude&&claude.use){const dl=await claude.use("downloads");if(dl){await dl.save({filename:name,data});toast("Backup salvato.");return}}}catch(err){if(err&&err.code==="declined")return}
+  try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"application/json"}));a.download=name;document.body.appendChild(a);a.click();a.remove();toast("Backup scaricato.")}
+  catch(err){toast("Download non disponibile qui.")}
+}
+let pendingImport=null;
+$("#file-import").addEventListener("change",async e=>{
+  const f=e.target.files[0];e.target.value="";if(!f)return;
+  try{const d=JSON.parse(await f.text());const list=Array.isArray(d)?d:d.campaigns;
+    if(!Array.isArray(list)||!list.length||!list.every(k=>k&&Array.isArray(k.chars)))throw new Error();
+    pendingImport=list;
+    modal(`<h2>Importa backup</h2><p style="margin:0">Il file contiene ${list.length} campagn${list.length>1?"e":"a"}: ${list.map(k=>`<b>${esc(k.name)}</b>`).join(", ")}.</p>
+      <div class="row"><button class="btn pri" data-a="imp-add">Aggiungi alle mie</button><button class="btn danger" data-a="imp-replace">Sostituisci tutto</button><button class="btn ghost" data-a="modal-close">Annulla</button></div>`);
+  }catch(err){toast("Questo file non è un backup del Taccuino.")}
+});
+
+/* ============ avvio ============ */
+load();render();loadSpells();
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden"){ls.set("ddf-state",JSON.stringify(S));pushCloud()}});
+window.addEventListener("pagehide",()=>ls.set("ddf-state",JSON.stringify(S)));
+try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+initCloud();
+})();
+</script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+</script>
+</body>
+</html>
