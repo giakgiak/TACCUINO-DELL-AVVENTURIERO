@@ -63,7 +63,13 @@ h3{font-size:.95rem}
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--surface);border-bottom:1px solid var(--line)}
 .bar{display:flex;gap:8px;align-items:center;padding-block:8px}
 .brand{font-family:var(--f-display);font-weight:700;font-size:1rem;white-space:nowrap;color:var(--accent)}
-.bar select{min-width:0;flex:1 1 0;max-width:220px}
+.ctx{flex:1 1 auto;min-width:0;display:grid;text-align:left;background:none;border:0;border-left:1px solid var(--line);padding:2px 0 2px 10px;color:inherit;font:inherit;cursor:pointer}
+.ctx small{font-size:.72rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ctx b{font-size:.98rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ctx b::after{content:" ▸";color:var(--muted);font-weight:400;font-size:.8em}
+.sync{background:none;border:0;padding:8px;cursor:pointer;display:grid;place-items:center}
+.sync i{width:9px;height:9px;border-radius:50%;background:var(--hp);display:block}
+.sync.wait i{background:var(--hp-mid)}.sync.err i{background:var(--hp-low)}
 .vital{display:flex;gap:10px;align-items:center;padding-block:4px 8px;flex-wrap:wrap}
 .vital .who{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:40%}
 .hpbar{flex:1 1 160px;min-width:140px;height:22px;border-radius:6px;background:var(--sunk);position:relative;overflow:hidden;border:1px solid var(--line)}
@@ -229,8 +235,8 @@ details.it>summary .t.tt{display:grid;gap:1px;white-space:normal}
   <div class="wrap">
     <div class="bar">
       <button class="brand" data-a="tab" data-v="home" aria-label="Home" style="background:none;border:0;padding:0;cursor:pointer">⚔ Taccuino</button>
-      <select id="sel-camp" aria-label="Campagna"></select>
-      <select id="sel-char" aria-label="Personaggio"></select>
+      <button class="ctx" id="ctx" data-a="tab" data-v="home" aria-label="Cambia campagna o personaggio"></button>
+      <button class="sync" id="cloud" data-a="cloud-info" aria-label="Stato del salvataggio"><i></i></button>
       <button class="btn ghost" data-a="menu" aria-label="Menu">☰</button>
     </div>
     <div class="vital" id="vital"></div>
@@ -611,25 +617,24 @@ function heal(c,n){n=Math.max(0,Math.floor(n));if(!n)return;if(c.hp.cur===0)c.de
 function render(){renderTop();renderView();if(UI.drawer)renderDrawer()}
 function renderTop(){
   const k=camp();
-  $("#sel-camp").innerHTML=S.campaigns.map(c=>`<option value="${c.id}" ${k&&c.id===k.id?"selected":""}>${esc(c.name)}</option>`).join("");
-  $("#sel-char").innerHTML=k&&k.chars.length?k.chars.map(c=>`<option value="${c.id}" ${ch()&&c.id===ch().id?"selected":""}>${esc(c.name)}</option>`).join(""):`<option>Nessun personaggio</option>`;
+  const c=ch();const masterView=["master","combattimento","missioni","diario","mondo"].includes(UI.tab);
+  $("#ctx").innerHTML=UI.tab==="home"||!k?`<small>Taccuino dell'Avventuriero</small><b>Le tue campagne</b>`:`<small>${esc(k.name)}</small><b>${masterView&&UI.tab==="master"?"Vista Master":c?esc(c.name):"Nessun personaggio"}</b>`;
   $("#tabs").innerHTML=TABS.map(([id,l])=>`<button role="tab" aria-selected="${UI.tab===id}" data-a="tab" data-v="${id}">${l}</button>`).join("");
   renderVital();
 }
-function renderCloud(){const el=$("#cloud");if(el)el.textContent=UI.cloud}
+function renderCloud(){const el=$("#cloud");if(!el)return;const t=UI.cloud||"";el.className="sync"+(/errore|non raggiungibile|troppo grande/.test(t)?" err":/sincronizzo|offline|cerco|attivo/.test(t)?" wait":"");el.title=t;el.setAttribute("aria-label","Stato: "+t)}
 function hpPct(c){return c.hp.max?clamp(c.hp.cur/c.hp.max*100,0,100):0}
 function hpColor(p){return p>50?"var(--hp)":p>25?"var(--hp-mid)":"var(--hp-low)"}
 function renderVital(){
   const c=ch();const v=$("#vital");
-  if(!c){v.innerHTML=`<span class="muted">Crea un personaggio dal menu ☰</span><span class="cloud" id="cloud">${esc(UI.cloud)}</span>`;return}
+  renderCloud();
+  if(!c||UI.tab==="home"||UI.tab==="master"){v.hidden=true;v.innerHTML="";return}v.hidden=false;
   const p=hpPct(c);const tp=c.hp.max?clamp(c.hp.temp/c.hp.max*100,0,100):0;
   const tags=[...c.conditions.map(x=>`<span class="tag acc">${esc(x)}</span>`),c.exhaustion>0?`<span class="tag acc">Esaurimento ${c.exhaustion}</span>`:"",c.concentration?`<span class="tag gold">◎ ${esc(c.concentration)}</span>`:"",...c.effects.map(e=>`<span class="tag">${esc(e.name)}${e.rounds?` ${e.rounds}r`:""}</span>`)].join("");
-  v.innerHTML=`<span class="who">${esc(c.name)}</span>
-   <div class="hpbar" title="Punti ferita"><i style="width:${p}%;background:${hpColor(p)}"></i><b style="width:${tp}%"></b><span>${c.hp.cur}/${c.hp.max}${c.hp.temp?` +${c.hp.temp}`:""} PF</span></div>
+  v.innerHTML=`<div class="hpbar" title="Punti ferita"><i style="width:${p}%;background:${hpColor(p)}"></i><b style="width:${tp}%"></b><span>${c.hp.cur}/${c.hp.max}${c.hp.temp?` +${c.hp.temp}`:""} PF</span></div>
    <span class="tag">CA ${esc(c.ac)}</span>
    <button class="btn sm" data-a="quick-hp">± PF</button>
-   ${tags?`<div class="chips" style="flex-basis:100%">${tags}</div>`:""}
-   <span class="cloud" id="cloud" style="flex-basis:100%">${esc(UI.cloud)}</span>`;
+   ${tags?`<div class="chips" style="flex-basis:100%">${tags}</div>`:""}`;
 }
 function renderView(){
   ls.set("ddf-tab",UI.tab);
@@ -1091,6 +1096,7 @@ const A={
   "cmb-clear":()=>{confirmBox("Terminare il combattimento e svuotare la lista? I PF dei personaggi restano come sono.","Termina",()=>{camp().combat={round:1,turn:0,list:[],started:false}});return "noRender"},
   "add-obj":b=>{const q=camp().quests.find(x=>x.id===b.dataset.q);const o={id:uid(),text:"",done:false};q.objectives.push(o);setTimeout(()=>{const el=$("#"+fid(`k.quests#${q.id}.objectives#${o.id}.text`));if(el)el.focus()},50)},
   "del-obj":b=>{const q=camp().quests.find(x=>x.id===b.dataset.q);q.objectives=q.objectives.filter(o=>o.id!==b.dataset.id)},
+  "cloud-info":()=>{toast(`<div>${esc(UI.cloud)}</div>`);return "noRender"},
   "home-pick":b=>{S.active=b.dataset.k;const k=camp();k.activeChar=b.dataset.c;UI.tab="scheda";window.scrollTo(0,0)},
   "home-master":b=>{S.active=b.dataset.k;UI.tab="master";window.scrollTo(0,0)},
   "home-newchar":b=>{S.active=b.dataset.k;UI.tab="home";render();A["new-char"]();return "noRender"},
@@ -1268,8 +1274,7 @@ document.addEventListener("keydown",e=>{
   if(e.key==="Escape"){if(!$("#modal").hidden)closeModal();else if(UI.drawer){UI.drawer=false;renderDrawer()}}
   if(e.key==="Enter"&&e.target.tagName==="INPUT"){const map={"hp-amt":"dmg-self","q-amt":"q-dmg","nc-name":"nc-ok","ncp-name":"ncp-ok","rc-name":"rc-ok","new-item":"add-item","eff-name":"add-effect"};const a=map[e.target.id];if(a){e.preventDefault();const r=A[a]({dataset:{}},e);if(r!=="noRender"){touch();render()}}}
 });
-$("#sel-camp").addEventListener("change",e=>{S.active=e.target.value;save();render()});
-$("#sel-char").addEventListener("change",e=>{const k=camp();if(k){k.activeChar=e.target.value;touch();render()}});
+
 
 /* ============ backup ============ */
 async function doExport(){
