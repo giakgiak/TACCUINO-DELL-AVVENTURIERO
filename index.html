@@ -13,6 +13,7 @@
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<script>window.FIREBASE_CONFIG = {"apiKey": "AIzaSyBkyXqgK9ObPcN0F67NN121x6zIxwtv-UU", "authDomain": "taccuino-99e0e.firebaseapp.com", "projectId": "taccuino-99e0e", "storageBucket": "taccuino-99e0e.firebasestorage.app", "messagingSenderId": "363597758388", "appId": "1:363597758388:web:8e31ebd2223f625ebe3ce1"};</script>
 </head>
 <body>
 <title>Taccuino dell'Avventuriero</title>
@@ -361,6 +362,7 @@ function touch(){const k=camp();if(k)k.updatedAt=Date.now();save()}
 function save(){
   clearTimeout(saveT);saveT=setTimeout(()=>ls.set("ddf-state",JSON.stringify(S)),250);
   clearTimeout(cloudT);cloudT=setTimeout(pushCloud,1500);
+  if(FB)schedulePush();
 }
 let DB=null,COL=null,synced={},pendingDel=new Set(),chain=Promise.resolve();
 async function initCloud(){
@@ -405,6 +407,96 @@ function pushCloud(){
     }catch(e){UI.cloud="errore di salvataggio, riprovo";renderCloud();clearTimeout(cloudT);cloudT=setTimeout(pushCloud,8000)}
   });
 }
+
+/* ============ campagne condivise online (Firebase, solo sul sito) ============ */
+const FBV="10.12.2";let FB=null,fbInit=null,pushT=null;const LIVE_SUBS={},fbSynced={};const pendingRemote=new Map();
+const CLIENT=(()=>{let c=ls.get("ddf-client");if(!c){c=uid();ls.set("ddf-client",c)}return c})();
+const fbEnabled=()=>!!(window.FIREBASE_CONFIG&&window.FIREBASE_CONFIG.projectId&&!(window.claude&&window.claude.use));
+const shareCode=k=>k&&k.share&&k.share.code;
+function newCode(){const A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";const r=new Uint32Array(16);crypto.getRandomValues(r);let s="";for(let i=0;i<16;i++){if(i&&i%4===0)s+="-";s+=A[r[i]%A.length]}return s}
+const normCode=c=>String(c||"").toUpperCase().replace(/[^A-Z0-9]/g,"").replace(/(.{4})(?=.)/g,"$1-");
+const LOCAL_KEYS=["share","__demo","activeChar","updatedAt","chars","id"];
+function campCore(k){const o={...k};for(const x of LOCAL_KEYS)delete o[x];return JSON.stringify(o)}
+function setShareStatus(t){UI.cloud=t;renderCloud()}
+async function fbStart(){
+  if(!fbEnabled())return null;if(fbInit)return fbInit;
+  fbInit=(async()=>{
+    const base=`https://www.gstatic.com/firebasejs/${FBV}/`;
+    const [app,auth,fs]=await Promise.all([import(base+"firebase-app.js"),import(base+"firebase-auth.js"),import(base+"firebase-firestore.js")]);
+    const a=app.initializeApp(window.FIREBASE_CONFIG);
+    let db;try{db=fs.initializeFirestore(a,{localCache:fs.persistentLocalCache({tabManager:fs.persistentMultipleTabManager()})})}catch(e){db=fs.getFirestore(a)}
+    const au=auth.getAuth(a);if(!au.currentUser)await auth.signInAnonymously(au);
+    FB={fs,db};return FB})().catch(e=>{fbInit=null;setShareStatus("condivisione non raggiungibile, riprovo");setTimeout(()=>fbStart().then(()=>{listenAll();schedulePush()}),15000);throw e});
+  return fbInit;
+}
+function campRef(code){return FB.fs.doc(FB.db,"campagne",code)}
+function pgCol(code){return FB.fs.collection(FB.db,"campagne",code,"pg")}
+function schedulePush(){clearTimeout(pushT);pushT=setTimeout(pushShared,900)}
+function pushShared(){
+  if(!FB)return;const {fs}=FB;
+  for(const k of S.campaigns){const code=shareCode(k);if(!code)continue;const sy=fbSynced[code]||(fbSynced[code]={core:null,chars:{}});
+    const core=campCore(k);if(sy.core!==core){sy.core=core;fs.setDoc(campRef(code),{json:core,updatedAt:Date.now(),by:CLIENT}).catch(shareErr)}
+    const ids=new Set();
+    for(const c of k.chars){ids.add(c.id);const j=JSON.stringify(c);if(sy.chars[c.id]!==j){sy.chars[c.id]=j;fs.setDoc(fs.doc(pgCol(code),c.id),{json:j,updatedAt:Date.now(),by:CLIENT}).catch(shareErr)}}
+    for(const id in sy.chars)if(!ids.has(id)){delete sy.chars[id];fs.deleteDoc(fs.doc(pgCol(code),id)).catch(shareErr)}}
+  if(S.campaigns.some(shareCode))setShareStatus(navigator.onLine===false?"offline: sincronizzo appena torna la rete":"condivisa online");
+}
+function shareErr(e){console.warn(e);setShareStatus("errore di condivisione: controlla la connessione")}
+function typing(){const a=document.activeElement;return a&&(a.matches("input,textarea,select"))&&a.closest("#view,#modal")&&!a.closest("#modal .share-box")}
+function applyRemote(code,kind,id,json){
+  const k=S.campaigns.find(x=>shareCode(x)===code);if(!k)return;const sy=fbSynced[code]||(fbSynced[code]={core:null,chars:{}});
+  if(kind==="core"){if(sy.core===json)return;let o;try{o=JSON.parse(json)}catch(e){return}sy.core=json;
+    for(const key in o)if(!LOCAL_KEYS.includes(key))k[key]=o[key];}
+  else if(kind==="char"){if(json===null){if(!(id in sy.chars)&&!k.chars.some(c=>c.id===id))return;delete sy.chars[id];k.chars=k.chars.filter(c=>c.id!==id);if(k.activeChar===id)k.activeChar=k.chars[0]?k.chars[0].id:null}
+    else{if(sy.chars[id]===json)return;let c;try{c=JSON.parse(json)}catch(e){return}sy.chars[id]=json;const i=k.chars.findIndex(x=>x.id===id);if(i>=0)k.chars[i]=c;else{k.chars.push(c);if(!k.activeChar)k.activeChar=c.id}}}
+  migrate();ls.set("ddf-state",JSON.stringify(S));
+  if(k===camp()){if(typing())UI.remoteDirty=true;else render()}
+}
+document.addEventListener("focusout",()=>setTimeout(()=>{if(UI.remoteDirty&&!typing()){UI.remoteDirty=false;render()}},300));
+function listen(code){
+  if(!FB||LIVE_SUBS[code])return;const {fs}=FB;
+  const u1=fs.onSnapshot(campRef(code),d=>{if(d.exists()&&d.data().json)applyRemote(code,"core",null,d.data().json)},shareErr);
+  const u2=fs.onSnapshot(pgCol(code),q=>{q.docChanges().forEach(ch=>{if(ch.type==="removed")applyRemote(code,"char",ch.doc.id,null);else applyRemote(code,"char",ch.doc.id,ch.doc.data().json)})},shareErr);
+  LIVE_SUBS[code]=()=>{u1();u2()};
+}
+function listenAll(){for(const k of S.campaigns){const c=shareCode(k);if(c)listen(c)}}
+async function initShare(){
+  if(!fbEnabled())return;
+  const q=new URLSearchParams(location.search).get("c");
+  if(!S.campaigns.some(shareCode)&&!q)return; // carica Firebase solo se serve
+  try{await fbStart();listenAll();schedulePush();if(q){history.replaceState(null,"",location.pathname);joinCode(q)}}catch(e){}
+}
+async function shareCamp(){
+  const k=camp();if(!k)return;
+  if(!fbEnabled()){toast("La condivisione online funziona dall'app sul sito.");return}
+  if(!shareCode(k)){try{setShareStatus("attivo la condivisione…");await fbStart()}catch(e){toast("Non riesco a collegarmi. Controlla la connessione e riprova.");return}
+    delete k.__demo;k.share={code:newCode()};touch();schedulePush();listen(k.share.code)}
+  showShare(k);
+}
+function shareLink(code){return location.origin+location.pathname+"?c="+code.replace(/-/g,"")}
+function showShare(k){const code=k.share.code;
+  modal(`<h2>Campagna condivisa</h2><div class="share-box" style="display:grid;gap:10px">
+    <p style="margin:0">Chi ha questo codice vede e modifica <b>${esc(k.name)}</b> da qualsiasi dispositivo, in tempo reale. Dallo solo al tuo gruppo.</p>
+    <div class="num" style="font-size:1.35rem;text-align:center;letter-spacing:.06em;background:var(--sunk);border-radius:8px;padding:10px;user-select:all">${esc(code)}</div>
+    <input readonly value="${esc(shareLink(code))}" onclick="this.select()" aria-label="Link della campagna">
+    <div class="row"><button class="btn pri" data-a="share-send">Invia link al gruppo</button><button class="btn" data-a="share-copy">Copia link</button><button class="btn ghost" data-a="modal-close">Chiudi</button></div>
+    <p class="muted" style="margin:0;font-size:.8rem">Gli altri aprono il link (o ☰ → Entra con un codice). Ognuno può creare il suo personaggio nella campagna.</p></div>`)}
+async function joinCode(raw){
+  const code=normCode(raw);if(code.replace(/-/g,"").length!==16){toast("Il codice deve avere 16 caratteri.");return}
+  const ex=S.campaigns.find(k=>shareCode(k)===code);if(ex){S.active=ex.id;closeModal();render();toast(`Sei già in <b>${esc(ex.name)}</b>.`);return}
+  try{setShareStatus("cerco la campagna…");await fbStart();const {fs}=FB;
+    const d=await fs.getDoc(campRef(code));if(!d.exists()){toast("Nessuna campagna con questo codice.");setShareStatus(S.campaigns.some(shareCode)?"condivisa online":"salvato su questo dispositivo");return}
+    const k=Object.assign(newCamp(),JSON.parse(d.data().json));k.share={code};k.chars=[];
+    fbSynced[code]={core:d.data().json,chars:{}};
+    const q=await fs.getDocs(pgCol(code));q.forEach(x=>{const j=x.data().json;try{k.chars.push(JSON.parse(j));fbSynced[code].chars[x.id]=j}catch(e){}});
+    k.activeChar=k.chars[0]?k.chars[0].id:null;
+    if(S.campaigns.length===1&&S.campaigns[0].__demo)S.campaigns=[];
+    S.campaigns.push(k);S.active=k.id;migrate();upgradeMySpells();ls.set("ddf-state",JSON.stringify(S));listen(code);closeModal();render();
+    setShareStatus("condivisa online");toast(`Sei entrato in <b>${esc(k.name)}</b>.${k.chars.length?"":" Crea il tuo personaggio dal menu ☰."}`,4500);
+  }catch(e){console.warn(e);toast("Non riesco a collegarmi. Controlla la connessione e riprova.")}
+}
+window.addEventListener("online",()=>{if(FB)schedulePush()});
+window.addEventListener("offline",()=>{if(S.campaigns.some(shareCode))setShareStatus("offline: sincronizzo appena torna la rete")});
 
 function load(){
   try{const raw=ls.get("ddf-state");if(raw){const s=JSON.parse(raw);if(s&&Array.isArray(s.campaigns)&&s.campaigns.length){S=s;migrate();return}}}catch(e){}
@@ -976,13 +1068,19 @@ const A={
   "ms-dmg":b=>{const c=camp().chars.find(x=>x.id===b.dataset.id);const n=numIn("#md-"+c.id);if(n)damage(c,n)},
   "ms-heal":b=>{const c=camp().chars.find(x=>x.id===b.dataset.id);const n=numIn("#md-"+c.id);if(n)heal(c,n)},
   "ms-open":b=>{const k=camp();k.activeChar=b.dataset.id;UI.tab="scheda";window.scrollTo(0,0)},
-  "ms-del":b=>{const k=camp();const c=k.chars.find(x=>x.id===b.dataset.id);confirmBox(`Togliere <b>${esc(c.name)}</b> da questa campagna? Il giocatore conserva la sua scheda sul suo telefono.`,"Togli",()=>{k.chars=k.chars.filter(x=>x.id!==c.id);k.combat.list=k.combat.list.filter(e=>e.charId!==c.id);if(k.activeChar===c.id)k.activeChar=k.chars[0]?k.chars[0].id:null});return "noRender"},
+  "ms-del":b=>{const k=camp();const c=k.chars.find(x=>x.id===b.dataset.id);confirmBox(shareCode(k)?`Eliminare <b>${esc(c.name)}</b> dalla campagna condivisa? Sparisce per tutti.`:`Togliere <b>${esc(c.name)}</b> da questa campagna? Il giocatore conserva la sua scheda sul suo telefono.`,"Togli",()=>{k.chars=k.chars.filter(x=>x.id!==c.id);k.combat.list=k.combat.list.filter(e=>e.charId!==c.id);if(k.activeChar===c.id)k.activeChar=k.chars[0]?k.chars[0].id:null});return "noRender"},
   "ms-import":()=>{$("#file-char").click();return "noRender"},
   "send-char":()=>{sendChar();return "noRender"},
+  "share-camp":()=>{shareCamp();return "noRender"},
+  "join":()=>{modal(`<h2>Entra in una campagna</h2><p style="margin:0">Inserisci il codice che ti ha dato il Master (o chi ha creato la campagna).</p><input id="join-code" placeholder="ABCD-EFGH-JKLM-NPQR" autocapitalize="characters" autocomplete="off"><div class="row"><button class="btn pri" data-a="join-ok">Entra</button><button class="btn ghost" data-a="modal-close">Annulla</button></div>`);return "noRender"},
+  "join-ok":()=>{joinCode($("#join-code").value);return "noRender"},
+  "share-copy":()=>{const k=camp();const t=shareLink(k.share.code);(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast("Link copiato."),()=>toast("Copia il link dal campo qui sopra."));return "noRender"},
+  "share-send":()=>{const k=camp();const url=shareLink(k.share.code);if(navigator.share)navigator.share({title:k.name,text:`Unisciti alla campagna "${k.name}" sul Taccuino dell'Avventuriero (codice ${k.share.code})`,url}).catch(()=>{});else{(navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(()=>toast("Link copiato: incollalo nel gruppo."),()=>toast("Copia il link dal campo qui sopra."))}return "noRender"},
   // menu
   menu:()=>{modal(`<h2>Gestione</h2>
     <div class="f"><span class="lbl">Personaggi</span><div class="row"><button class="btn" data-a="new-char">Nuovo personaggio</button><button class="btn" data-a="send-char" ${ch()?"":"disabled"}>Invia scheda al Master</button><button class="btn danger" data-a="del-char" ${ch()?"":"disabled"}>Elimina personaggio attuale</button></div></div>
     <div class="f"><span class="lbl">Campagne</span><div class="row"><button class="btn" data-a="new-camp">Nuova campagna</button><button class="btn" data-a="ren-camp">Rinomina campagna</button><button class="btn danger" data-a="del-camp">Elimina campagna</button></div></div>
+    ${fbEnabled()?`<div class="f"><span class="lbl">Online</span><div class="row"><button class="btn pri" data-a="share-camp">${shareCode(camp())?"Codice della campagna":"Condividi campagna online"}</button><button class="btn" data-a="join">Entra con un codice</button></div></div>`:""}
     <div class="f"><span class="lbl">Backup</span><div class="row"><button class="btn" data-a="export">Esporta tutto (JSON)</button><button class="btn" data-a="import">Importa backup</button></div>
     <p class="muted" style="margin:0;font-size:.8rem">I dati si salvano da soli. Esporta un backup ogni tanto, o per passare la scheda a un amico.</p></div>
     <div><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
@@ -1194,7 +1292,7 @@ load();render();loadSpells();
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden"){ls.set("ddf-state",JSON.stringify(S));pushCloud()}});
 window.addEventListener("pagehide",()=>ls.set("ddf-state",JSON.stringify(S)));
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
-initCloud();
+initCloud();initShare();
 })();
 </script>
 

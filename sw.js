@@ -1,5 +1,5 @@
 // Service worker del Taccuino: funziona offline e si aggiorna da solo.
-const CACHE = "taccuino-306f0d7c8f";
+const CACHE = "taccuino-008f042c1a";
 const SHELL = ["./", "index.html", "spells.json", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -13,7 +13,8 @@ self.addEventListener("fetch", e => {
   const url = new URL(req.url);
   const sameOrigin = url.origin === location.origin;
   const isFont = /fonts\.(googleapis|gstatic)\.com$/.test(url.hostname);
-  if (!sameOrigin && !isFont) return;
+  const isSdk = url.hostname === "www.gstatic.com" && url.pathname.startsWith("/firebasejs/");
+  if (!sameOrigin && !isFont && !isSdk) return;
   // pagina: prima la rete (per gli aggiornamenti), poi la cache se offline
   if (req.mode === "navigate") {
     e.respondWith(fetch(req).then(r => { const cp = r.clone(); caches.open(CACHE).then(c => c.put("index.html", cp)); return r; })
