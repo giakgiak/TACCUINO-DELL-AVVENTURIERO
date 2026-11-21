@@ -164,6 +164,12 @@ details.it>summary .t.tt{display:grid;gap:1px;white-space:normal}
 .cmb{display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--surface)}
 .cmb.cur{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
 .cmb.down{opacity:.55}
+.hm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));gap:8px}
+.hm-char{display:grid;gap:4px;text-align:left;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:inherit;font:inherit;cursor:pointer;min-width:0}
+.hm-char:hover,.hm-char:focus-visible{border-color:var(--accent)}
+.hm-n{font-weight:700;font-size:1rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hm-s{font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hm-camp.cur{border-color:var(--accent)}
 .mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr));gap:12px}
 .mcard{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:12px;display:grid;gap:8px;min-width:0}
 .mcard.down{border-color:var(--hp-low)}
@@ -222,7 +228,7 @@ details.it>summary .t.tt{display:grid;gap:1px;white-space:normal}
 <div class="top">
   <div class="wrap">
     <div class="bar">
-      <span class="brand">⚔ Taccuino</span>
+      <button class="brand" data-a="tab" data-v="home" aria-label="Home" style="background:none;border:0;padding:0;cursor:pointer">⚔ Taccuino</button>
       <select id="sel-camp" aria-label="Campagna"></select>
       <select id="sel-char" aria-label="Personaggio"></select>
       <button class="btn ghost" data-a="menu" aria-label="Menu">☰</button>
@@ -252,7 +258,7 @@ const CONDITIONS=["Accecato","Affascinato","Afferrato","Assordato","Avvelenato",
 const COINS=[["mp","Platino",10],["mo","Oro",1],["me","Electrum",.5],["ma","Argento",.1],["mr","Rame",.01]];
 const SCHOOLS=["","Abiurazione","Ammaliamento","Divinazione","Evocazione","Illusione","Invocazione","Necromanzia","Trasmutazione"];
 const QSTATUS={attiva:"Attiva",completata:"Completata",fallita:"Fallita",sospesa:"In sospeso"};
-const TABS=[["scheda","Scheda"],["inventario","Inventario"],["capacita","Capacità"],["magie","Magie"],["combattimento","Combattimento"],["master","Master"],["missioni","Missioni"],["diario","Diario"],["mondo","PNG e luoghi"]];
+const TABS=[["home","Home"],["scheda","Scheda"],["inventario","Inventario"],["capacita","Capacità"],["magie","Magie"],["combattimento","Combattimento"],["master","Master"],["missioni","Missioni"],["diario","Diario"],["mondo","PNG e luoghi"]];
 
 
 /* ============ dati del Manuale del Giocatore (5e) ============ */
@@ -337,7 +343,7 @@ function demoCamp(){
 
 /* ============ stato ============ */
 let S={campaigns:[],active:null};
-const UI={custom:new Set(),spellView:"mine",comp:{q:"",cls:null,lvl:"",sch:"",conc:false,rit:false,limit:50},tab:ls.get("ddf-tab")||"scheda",open:new Set(),diceMode:"norm",hist:[],drawer:false,cloud:"salvato su questo dispositivo",onlyPrepared:false};
+const UI={custom:new Set(),spellView:"mine",comp:{q:"",cls:null,lvl:"",sch:"",conc:false,rit:false,limit:50},tab:"home",open:new Set(),diceMode:"norm",hist:[],drawer:false,cloud:"salvato su questo dispositivo",onlyPrepared:false};
 
 function camp(){return S.campaigns.find(c=>c.id===S.active)||S.campaigns[0]||null}
 function ch(){const k=camp();if(!k)return null;return k.chars.find(c=>c.id===k.activeChar)||k.chars[0]||null}
@@ -628,6 +634,7 @@ function renderVital(){
 function renderView(){
   ls.set("ddf-tab",UI.tab);
   const k=camp(),c=ch();const v=$("#view");
+  if(UI.tab==="home"){v.innerHTML=vHome();return}
   if(!k){v.innerHTML=`<div class="card"><h2>Nessuna campagna</h2><button class="btn pri" data-a="new-camp">Crea campagna</button></div>`;return}
   const charTabs=["scheda","inventario","capacita","magie"];
   if(charTabs.includes(UI.tab)&&!c){v.innerHTML=`<div class="card"><h2>Nessun personaggio in questa campagna</h2><p class="muted">Aggiungi il tuo eroe per usare scheda, inventario, capacità e magie.</p><div><button class="btn pri" data-a="new-char">Nuovo personaggio</button></div></div>`;return}
@@ -876,6 +883,25 @@ function vCombat(){
   </section>`;
 }
 
+/* ---- Home ---- */
+function vHome(){
+  const camps=S.campaigns;
+  const cardFor=k=>{const sh=shareCode(k);const list=k.chars.map(c=>{const p=hpPct(c);return `<button class="hm-char" data-a="home-pick" data-k="${k.id}" data-c="${c.id}">
+      <span class="hm-n">${esc(c.name)}</span>
+      <span class="muted hm-s">${esc([c.race,c.cls,"liv. "+c.level].filter(Boolean).join(" · "))}${c.player?` — ${esc(c.player)}`:""}</span>
+      <span class="hpbar" style="height:12px;min-width:0;flex:none"><i style="width:${p}%;background:${hpColor(p)}"></i></span>
+      <span class="muted hm-s">${c.hp.cur}/${c.hp.max} PF · CA ${esc(c.ac)}</span></button>`}).join("");
+    return `<section class="card hm-camp ${k.id===S.active?"cur":""}">
+      <div class="card-h"><h2 style="margin:0">${esc(k.name)}</h2><div class="row" style="gap:6px">${sh?`<span class="tag gold" title="Codice ${esc(sh)}">Online</span>`:`<span class="tag">Su questo dispositivo</span>`}<span class="tag">${k.chars.length} PG</span></div></div>
+      ${list?`<div class="hm-grid">${list}</div>`:`<div class="empty">Nessun personaggio ancora.</div>`}
+      <div class="row"><button class="btn sm" data-a="home-newchar" data-k="${k.id}">+ Personaggio</button><button class="btn sm" data-a="home-master" data-k="${k.id}">Apri come Master</button>${fbEnabled()?`<button class="btn sm ghost" data-a="home-share" data-k="${k.id}">${sh?"Codice":"Condividi online"}</button>`:""}</div>
+    </section>`};
+  return `<section class="card"><h2 style="margin:0">Benvenuto, avventuriero</h2>
+      <p class="muted" style="margin:0">Scegli il personaggio con cui giocare, oppure apri la campagna come Master.</p>
+      <div class="row"><button class="btn pri sm" data-a="new-camp">Nuova campagna</button>${fbEnabled()?`<button class="btn sm" data-a="join">Entra con un codice</button>`:""}</div></section>
+    ${camps.map(cardFor).join("")||`<div class="empty">Nessuna campagna. Creane una per iniziare.</div>`}`;
+}
+
 /* ---- Master ---- */
 function slotsLeft(c){const out=[];for(let i=1;i<=9;i++){const s=c.slots[i];if(s&&Number(s.max)>0)out.push(`${i}°: ${Math.max(0,s.max-s.used)}/${s.max}`)}return out}
 function vMaster(){
@@ -1065,6 +1091,10 @@ const A={
   "cmb-clear":()=>{confirmBox("Terminare il combattimento e svuotare la lista? I PF dei personaggi restano come sono.","Termina",()=>{camp().combat={round:1,turn:0,list:[],started:false}});return "noRender"},
   "add-obj":b=>{const q=camp().quests.find(x=>x.id===b.dataset.q);const o={id:uid(),text:"",done:false};q.objectives.push(o);setTimeout(()=>{const el=$("#"+fid(`k.quests#${q.id}.objectives#${o.id}.text`));if(el)el.focus()},50)},
   "del-obj":b=>{const q=camp().quests.find(x=>x.id===b.dataset.q);q.objectives=q.objectives.filter(o=>o.id!==b.dataset.id)},
+  "home-pick":b=>{S.active=b.dataset.k;const k=camp();k.activeChar=b.dataset.c;UI.tab="scheda";window.scrollTo(0,0)},
+  "home-master":b=>{S.active=b.dataset.k;UI.tab="master";window.scrollTo(0,0)},
+  "home-newchar":b=>{S.active=b.dataset.k;UI.tab="home";render();A["new-char"]();return "noRender"},
+  "home-share":b=>{S.active=b.dataset.k;render();shareCamp();return "noRender"},
   "ms-dmg":b=>{const c=camp().chars.find(x=>x.id===b.dataset.id);const n=numIn("#md-"+c.id);if(n)damage(c,n)},
   "ms-heal":b=>{const c=camp().chars.find(x=>x.id===b.dataset.id);const n=numIn("#md-"+c.id);if(n)heal(c,n)},
   "ms-open":b=>{const k=camp();k.activeChar=b.dataset.id;UI.tab="scheda";window.scrollTo(0,0)},
