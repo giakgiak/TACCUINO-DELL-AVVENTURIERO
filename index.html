@@ -370,7 +370,7 @@ const TAB_DESC={home:"Scegli campagna e personaggio",scheda:"Caratteristiche, PF
 const BNAV=["home","scheda","magie","combattimento"];
 const MODE_TABS={char:["scheda","inventario","capacita","magie","combattimento","missioni","diario","mondo"],master:["master","missioni","diario","mondo"]};
 const MODE_BNAV={char:["scheda","inventario","magie","combattimento"],master:["master","missioni","diario","mondo"]};
-const LIB_TABS=["home","libro","bestiario"];
+const LIB_TABS=["home","libro","bestiario","regole"];
 TAB_IC.libro="📚";TAB_IC.bestiario="👹";
 
 
@@ -498,6 +498,7 @@ function save(){
   clearTimeout(saveT);saveT=setTimeout(()=>ls.set("ddf-state",JSON.stringify(S)),250);
   clearTimeout(cloudT);cloudT=setTimeout(pushCloud,1500);
   if(FB)schedulePush();
+  if(typeof memCheck==="function")memCheck();
 }
 let DB=null,COL=null,synced={},pendingDel=new Set(),chain=Promise.resolve();
 async function initCloud(){
@@ -748,7 +749,7 @@ function renderTop(){
   $("#ctx").innerHTML=UI.tab==="home"||!k?`<small>Taccuino dell'Avventuriero</small><b>Le tue campagne</b>`:`<small>${esc(k.name)}</small><b>${masterView&&UI.tab==="master"?"Vista Master":c?esc(c.name):"Nessun personaggio"}</b>`;
   const md=curMode();const lbl=Object.fromEntries(TABS);const shown=md==="home"?[]:MODE_TABS[md];const bn=md==="home"?[]:MODE_BNAV[md];
   document.body.classList.toggle("no-nav",md==="home");
-  if(LIB_TABS.includes(UI.tab)&&UI.tab!=="home")$("#ctx").innerHTML=`<small>Biblioteca</small><b>${UI.tab==="libro"?"Manuale degli incantesimi":"Bestiario"}</b>`;
+  if(LIB_TABS.includes(UI.tab)&&UI.tab!=="home")$("#ctx").innerHTML=`<small>Biblioteca</small><b>${UI.tab==="libro"?"Manuale degli incantesimi":UI.tab==="regole"?"Regole e opzioni":"Bestiario"}</b>`;
   $("#tabs").innerHTML=[["home","Home"],...shown.map(id=>[id,lbl[id]])].map(([id,l])=>`<button role="tab" aria-selected="${UI.tab===id}" data-a="tab" data-v="${id}"><span class="ic" aria-hidden="true">${TAB_IC[id]}</span>${l}</button>`).join("");
   const inMore=md==="char"&&!bn.includes(UI.tab);
   $("#bnav").innerHTML=md==="master"?["home",...bn].map(id=>`<button data-a="tab" data-v="${id}" aria-current="${UI.tab===id}"><span class="ic" aria-hidden="true">${TAB_IC[id]}</span>${id==="mondo"?"Mondo":lbl[id]}</button>`).join(""):bn.map(id=>`<button data-a="tab" data-v="${id}" aria-current="${UI.tab===id}"><span class="ic" aria-hidden="true">${TAB_IC[id]}</span>${id==="combattimento"?"Combatti":lbl[id]}</button>`).join("")+(md!=="char"?"":`<button data-a="more" aria-current="${inMore}"><span class="ic" aria-hidden="true">${inMore?TAB_IC[UI.tab]:"🧭"}</span>${inMore?esc(lbl[UI.tab]).replace("PNG e luoghi","Mondo"):"Altro"}</button>`);
@@ -773,7 +774,7 @@ function renderView(){
   const k=camp(),c=ch();const v=$("#view");
   v.classList.remove("cls-themed");v.removeAttribute("style");
   if(UI.tab==="home"){v.innerHTML=vHome();return}
-  if(UI.tab==="libro"||UI.tab==="bestiario"){v.innerHTML=`<div><button class="btn sm ghost" data-a="tab" data-v="home">← Torna alla Home</button></div>`+(UI.tab==="libro"?vCompendio():vBestiaryLib());v.querySelectorAll("details[data-id]").forEach(d=>d.addEventListener("toggle",()=>{d.open?UI.open.add(d.dataset.id):UI.open.delete(d.dataset.id)}));return}
+  if(UI.tab==="libro"||UI.tab==="bestiario"||UI.tab==="regole"){v.innerHTML=`<div><button class="btn sm ghost" data-a="tab" data-v="home">← Torna alla Home</button></div>`+(UI.tab==="libro"?vCompendio():UI.tab==="regole"?vRulesLib():vBestiaryLib());v.querySelectorAll("details[data-id]").forEach(d=>d.addEventListener("toggle",()=>{d.open?UI.open.add(d.dataset.id):UI.open.delete(d.dataset.id)}));return}
   if(!k){v.innerHTML=`<div class="card"><h2>Nessuna campagna</h2><button class="btn pri" data-a="new-camp">Crea campagna</button></div>`;return}
   const charTabs=["scheda","inventario","capacita","magie"];
   if(charTabs.includes(UI.tab)&&!c){v.innerHTML=`<div class="card"><h2>Nessun personaggio in questa campagna</h2><p class="muted">Aggiungi il tuo eroe per usare scheda, inventario, capacità e magie.</p><div><button class="btn pri" data-a="new-char">Nuovo personaggio</button></div></div>`;return}
@@ -1048,7 +1049,7 @@ function vHome(){
       <div class="row"><button class="btn pri sm" data-a="new-camp">Nuova campagna</button>${fbEnabled()?`<button class="btn sm" data-a="join">Entra con un codice</button>`:""}</div></section>
     ${camps.map(cardFor).join("")||`<div class="empty">Nessuna campagna. Creane una per iniziare.</div>`}
     <section class="card"><h2 style="margin:0">Biblioteca</h2><p class="muted" style="margin:0">Da consultare quando vuoi, senza aprire un personaggio.</p>
-      <div class="lib"><button class="lib-b" data-a="tab" data-v="libro"><span aria-hidden="true">🔮</span><b>Manuale degli incantesimi</b><small>${SPELLDB?SPELLDB.length:319} incantesimi in italiano</small></button><button class="lib-b" data-a="tab" data-v="bestiario"><span aria-hidden="true">👹</span><b>Bestiario</b><small>${MONDB?MONDB.length:334} mostri${PACKS.length?"":" del manuale base"}</small></button></div>${packsBox()}</section>`;
+      <div class="lib"><button class="lib-b" data-a="tab" data-v="libro"><span aria-hidden="true">🔮</span><b>Manuale degli incantesimi</b><small>${SPELLDB?SPELLDB.length:319} incantesimi in italiano</small></button><button class="lib-b" data-a="tab" data-v="bestiario"><span aria-hidden="true">👹</span><b>Bestiario</b><small>${MONDB?MONDB.length:334} mostri${PACKS.length?"":" del manuale base"}</small></button>${PACKRULES.length?`<button class="lib-b" data-a="tab" data-v="regole"><span aria-hidden="true">📖</span><b>Regole e opzioni</b><small>Sottoclassi, razze, talenti e altro: ${PACKRULES.length} sezioni</small></button>`:""}</div>${packsBox()}</section>`;
 }
 
 /* ---- Master ---- */
@@ -1180,18 +1181,38 @@ let MONDB=null,monErr=false;
 function loadMons(){if(MONDB||loadMons.p)return;loadMons.p=fetch("monsters.json").then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{MON_SRD=d;MONDB=packMons(d);refreshMonLists()}).catch(()=>{monErr=true;loadMons.p=null;refreshMonLists()})}
 
 /* ---- manuali personali del Master: importati da file, restano solo su questo dispositivo (IndexedDB), mai sincronizzati né pubblicati ---- */
-let PACKS=[],MON_SRD=null,SPELL_SRD=null;
+let PACKS=[],MON_SRD=null,SPELL_SRD=null,PACKRULES=[];
 function packDB(){return new Promise((res,rej)=>{try{const r=indexedDB.open("ddf-packs",1);r.onupgradeneeded=()=>r.result.createObjectStore("packs",{keyPath:"id"});r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
 function packTx(mode,fn){return packDB().then(db=>new Promise((res,rej)=>{const t=db.transaction("packs",mode);const st=t.objectStore("packs");const q=fn(st);t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error)}))}
 const packMons=d=>d.concat(...PACKS.map(p=>(p.monsters||[]).map(o=>({...o,fo:p.name}))));
 const packSpells=d=>d.concat(...PACKS.map(p=>(p.spells||[]).map(o=>({...o,fo:p.name}))));
-function packsApply(){if(MON_SRD)MONDB=packMons(MON_SRD);if(SPELL_SRD)SPELLDB=packSpells(SPELL_SRD);refreshMonLists();if(["home","libro","bestiario","master"].includes(UI.tab))renderView()}
+function packsApply(){memCheck();PACKRULES=[].concat(...PACKS.map(p=>(p.rules||[]).map(r=>({...r,fo:p.name}))));if(MON_SRD)MONDB=packMons(MON_SRD);if(SPELL_SRD)SPELLDB=packSpells(SPELL_SRD);refreshMonLists();if(["home","libro","bestiario","master"].includes(UI.tab))renderView()}
 function packsLoad(){packTx("readonly",st=>st.getAll()).then(L=>{PACKS=(L||[]).sort((a,b)=>(a.name||"").localeCompare(b.name||""));if(PACKS.length)packsApply()}).catch(()=>{})}
-const isPack=d=>d&&d.kind==="ddf-pack"&&d.id&&(Array.isArray(d.monsters)||Array.isArray(d.spells));
-async function importPacks(list){let n=0;for(const d of list){const p={id:String(d.id),name:String(d.name||d.id),monsters:d.monsters||[],spells:d.spells||[],importedAt:Date.now()};try{await packTx("readwrite",st=>st.put(p));PACKS=PACKS.filter(x=>x.id!==p.id).concat(p);n++}catch(e){toast("Non riesco a salvare il manuale su questo dispositivo (spazio pieno?).");return}}
-  if(n){packsApply();const p=list[list.length-1];toast(`Manuale importato: <b>${esc(p.name||p.id)}</b> (${(p.monsters||[]).length} mostri${(p.spells||[]).length?`, ${p.spells.length} incantesimi`:""}). Resta solo su questo dispositivo.`,5000)}}
+const isPack=d=>d&&d.kind==="ddf-pack"&&d.id&&(Array.isArray(d.monsters)||Array.isArray(d.spells)||Array.isArray(d.rules));
+async function importPacks(list){let n=0;for(const d of list){const p={id:String(d.id),name:String(d.name||d.id),monsters:d.monsters||[],spells:d.spells||[],rules:Array.isArray(d.rules)?d.rules:[],importedAt:Date.now()};try{await packTx("readwrite",st=>st.put(p));PACKS=PACKS.filter(x=>x.id!==p.id).concat(p);n++}catch(e){toast("Non riesco a salvare il manuale su questo dispositivo (spazio pieno?).");return}}
+  if(n){packsApply();const p=list[list.length-1];toast(`Manuale importato: <b>${esc(p.name||p.id)}</b> (${packCounts(p)}). Resta solo su questo dispositivo.`,5000)}}
+/* ============ memoria usata ============ */
+const MB=1048576,LS_LIM=5e6,FB_LIM=MB,PRIV_LIM=250000;
+const u8=s=>new Blob([s]).size;
+const fmtB=b=>b>=MB?(b/MB).toFixed(b>=10*MB?0:1).replace(".",",")+" MB":b>=1024?Math.round(b/1024)+" KB":b+" B";
+function memItems(){const L=[];const st=JSON.stringify(S);
+  L.push({n:"Dati dell'app su questo dispositivo",d:"campagne, schede, bestiario, appunti",u:st.length*2,l:LS_LIM*2});
+  if(PACKS.length)L.push({n:"Manuali importati",d:PACKS.map(p=>p.name).join(", "),u:PACKS.reduce((a,p)=>a+u8(JSON.stringify(p)),0),l:0});
+  for(const k of S.campaigns){const code=shareCode(k);
+    if(COL)L.push({n:"Cloud · "+k.name,d:"salvataggio nel tuo account",u:JSON.stringify(k).length,l:PRIV_LIM});
+    if(code){L.push({n:"Online · "+k.name,d:"dati comuni della campagna",u:u8(campCore(k)),l:FB_LIM});
+      const big=k.chars.map(c=>({c,u:u8(JSON.stringify(c))})).sort((a,b)=>b.u-a.u)[0];
+      if(big)L.push({n:"Online · scheda più pesante",d:big.c.name,u:big.u,l:FB_LIM})}}
+  return L}
+const memPct=i=>i.l?i.u/i.l:0;
+async function memDevice(){try{if(!navigator.storage||!navigator.storage.estimate)return null;const e=await navigator.storage.estimate();return e&&e.quota?{n:"Spazio totale del browser",d:"tutto ciò che il Taccuino tiene sul dispositivo",u:e.usage||0,l:e.quota}:null}catch(e){return null}}
+let memWarned={};
+function memCheck(){clearTimeout(memCheck.t);memCheck.t=setTimeout(async()=>{const L=memItems();const d=await memDevice();if(d)L.push(d);
+  const hot=L.filter(i=>memPct(i)>=.9&&!memWarned[i.n]);if(!hot.length)return;hot.forEach(i=>memWarned[i.n]=1);const i=hot[0];
+  toast(`⚠️ Memoria quasi piena: <b>${esc(i.n)}</b> usa ${fmtB(i.u)} di ${fmtB(i.l)} (${Math.round(memPct(i)*100)}%). Fai un backup e alleggerisci (es. rimuovi un manuale o vecchie voci del diario).`,9000)},3000)}
+function packCounts(p){return [(p.monsters||[]).length?p.monsters.length+" mostri":"",(p.spells||[]).length?p.spells.length+" incantesimi":"",(p.rules||[]).length?p.rules.length+" sezioni di regole":""].filter(Boolean).join(", ")}
 function packsBox(){return `<div class="packs"><div class="card-h" style="margin:0"><b>I miei manuali</b><button class="btn sm" data-a="pack-import">Importa manuale</button></div>
-  ${PACKS.length?PACKS.map(p=>`<div class="row" style="justify-content:space-between"><span>📦 <b>${esc(p.name)}</b> <small class="muted">${[(p.monsters||[]).length?p.monsters.length+" mostri":"",(p.spells||[]).length?p.spells.length+" incantesimi":""].filter(Boolean).join(", ")}</small></span><button class="btn sm ghost" data-a="pack-del" data-id="${esc(p.id)}" aria-label="Rimuovi ${esc(p.name)}">✕</button></div>`).join(""):""}
+  ${PACKS.length?PACKS.map(p=>`<div class="row" style="justify-content:space-between"><span>📦 <b>${esc(p.name)}</b> <small class="muted">${packCounts(p)}</small></span><button class="btn sm ghost" data-a="pack-del" data-id="${esc(p.id)}" aria-label="Rimuovi ${esc(p.name)}">✕</button></div>`).join(""):""}
   <p class="muted" style="margin:0;font-size:.75rem">Puoi aggiungere i contenuti dei tuoi manuali da un file del Taccuino. Restano solo su questo dispositivo: non vengono caricati online né condivisi con i giocatori.</p></div>`}
 function refreshMonLists(){const a=document.getElementById("mcmd-res");if(a&&UI.mq)a.innerHTML=cmdResults(UI.mq);const b=document.getElementById("mp-res");if(b)b.innerHTML=presetResults()}
 function rerenderMaster(){const y=window.scrollY;renderView();window.scrollTo(0,y)}
@@ -1236,6 +1257,8 @@ function cmdResults(q){q=q.trim();
   const words=nrm(q).split(/\s+/).filter(Boolean);const has=s=>{const n=nrm(s);return words.every(w=>n.includes(w))};
   const rules=RULES.map(r=>({r,s:has(r.t)?3:has(r.t+" "+r.k)?2:has(r.t+" "+r.k+" "+r.x)?1:0})).filter(x=>x.s).sort((a,b)=>b.s-a.s).slice(0,6);
   if(rules.length)out.push(`<div class="mres"><span class="lbl">Regole</span>${rules.map(({r})=>`<details class="it"><summary><span class="t">📜 ${esc(r.t)}</span></summary><div class="body mtext">${esc(r.x)}</div></details>`).join("")}</div>`);
+  const pr=rulesSearch(q,"","").slice(0,5);
+  if(pr.length)out.push(`<div class="mres"><span class="lbl">Dai tuoi manuali</span>${pr.map(r=>ruleItem(r,false)).join("")}</div>`);
   if(!SPELLDB)loadSpells();else{const sp=SPELLDB.filter(o=>has(o.n+" "+(o.en||""))).slice(0,5);
     if(sp.length)out.push(`<div class="mres"><span class="lbl">Incantesimi</span>${sp.map(o=>{const v=dbView(o);return `<details class="it"><summary><span class="t">🔮 ${esc(v.name)} <small class="muted">${v.level?v.level+"° liv.":"trucchetto"} · ${esc(v.school)}</small></span></summary><div class="body"><div class="muted" style="font-size:.82rem">${esc([v.time,v.range,v.comp,v.duration+(v.conc?" (concentrazione)":"")].join(" · "))}</div><div class="mtext">${esc(v.desc)}</div>${v.higher?`<div class="mtext"><b>Ai livelli superiori.</b> ${esc(v.higher)}</div>`:""}</div></details>`}).join("")}</div>`)}
   if(!MONDB)loadMons();
@@ -1246,7 +1269,7 @@ function cmdResults(q){q=q.trim();
   if(notes.length)out.push(`<div class="mres"><span class="lbl">I tuoi appunti</span>${notes.map(n=>{const i=nrm(n.text).indexOf(words[0]);const sn=i<0?n.text.slice(0,140):(i>50?"…":"")+n.text.slice(Math.max(0,i-50),i+110)+"…";return `<button class="mrow" data-a="note-go" data-id="${n.id}"><b>📝 ${esc(n.title||"Senza titolo")}</b><small class="muted">${esc(sn)}</small></button>`}).join("")}</div>`);
   return out.join("")||`<div class="muted mhint">Nessun risultato per «${esc(q)}».</div>`}
 function monRow(name,sub,addAttrs,infoAttrs){return `<div class="mrow2"><button class="mrow" ${infoAttrs}><b>👹 ${esc(name)}</b><small class="muted">${sub}</small></button><button class="btn sm" ${addAttrs} title="Aggiungi al combattimento">+ ⚔</button></div>`}
-document.addEventListener("input",e=>{if(e.target.id==="mcmd"){UI.mq=e.target.value;const r=$("#mcmd-res");if(r)r.innerHTML=cmdResults(UI.mq)}else if(e.target.id==="mp-q"){UI.mpq=e.target.value;const r=$("#mp-res");if(r)r.innerHTML=presetResults()}});
+document.addEventListener("input",e=>{if(e.target.id==="mcmd"){UI.mq=e.target.value;const r=$("#mcmd-res");if(r)r.innerHTML=cmdResults(UI.mq)}else if(e.target.id==="mp-q"){UI.mpq=e.target.value;const r=$("#mp-res");if(r)r.innerHTML=presetResults()}else if(e.target.id==="rl-q"){UI.rlq=e.target.value;UI.rllim=40;const r=$("#rl-res");if(r)r.innerHTML=rulesResults()}});
 document.addEventListener("submit",e=>{if(e.target.id==="mcmd-form"){e.preventDefault();const q=($("#mcmd").value||"").trim();if(parseRoll(q)&&/d/i.test(q))roll(q,q)}});
 
 /* incontro: preset + bestiario */
@@ -1254,6 +1277,20 @@ function presetResults(){if(!MONDB&&!monErr)loadMons();const q=nrm(UI.mpq||"");c
   const fo=UI.mpsrc||"";let L=presetList().filter(p=>(!fo||(fo==="srd"?!p.fo:p.fo===fo))&&(!q||qMatch(q,p.name+" "+(p.en||"")+" "+(p.t||"")))&&(!cr||(cr==="h"?crNum(p.cr)>=5:Math.abs(crNum(p.cr)-Number(cr))<.01||(cr==="2-4"&&crNum(p.cr)>=2&&crNum(p.cr)<=4))));
   const tot=L.length;L=L.slice(0,40);
   return (L.map(p=>`<div class="mrow2"><button class="mrow" data-a="mp-info" data-k="${p.key}"><b>${esc(p.name)}</b><small class="muted">GS ${esc(p.cr)} · CA ${p.ac} · PF ${esc(p.hp)}${p.t?" · "+esc(p.t):""}${p.fo?" · 📦 "+esc(p.fo):""}</small></button>${UI.tab==="bestiario"?"":`<button class="btn sm" data-a="mp-save" data-k="${p.key}" title="Salva nel mio bestiario">☆</button><button class="btn sm" data-a="mp-add" data-k="${p.key}" title="Aggiungi al combattimento">+ ⚔</button>`}</div>`).join("")||`<div class="empty">Nessun mostro trovato.</div>`)+(tot>40?`<div class="muted mhint">Altri ${tot-40}: affina la ricerca.</div>`:"")+(!MONDB?`<div class="muted mhint">${monErr?"Elenco completo non disponibile offline: mostro i preset base.":"Carico 334 mostri…"}</div>`:"")}
+function rulesSearch(q,src,cap){const words=nrm(q.trim()).split(/\s+/).filter(Boolean);let L=PACKRULES.filter(r=>(!src||r.fo===src)&&(!cap||r.c===cap));
+  if(!words.length)return L;const has=s=>{const n=nrm(s);return words.every(w=>n.includes(w))};
+  return L.map(r=>({r,s:has(r.n)?3:has(r.g+" "+r.n)?2:has(r.x)?1:0})).filter(o=>o.s).sort((a,b)=>b.s-a.s).map(o=>o.r)}
+function ruleItem(r,open){return `<details class="it"${open?" open":""}><summary><span class="t">📖 ${esc(r.n)} <small class="muted">${esc([r.g,r.c].filter(Boolean).join(" · "))} · 📦 ${esc(r.fo)}</small></span></summary><div class="body mtext" style="white-space:normal">${esc(r.x)}</div></details>`}
+function rulesResults(){const L=rulesSearch(UI.rlq||"",UI.rlsrc||"",UI.rlcap||"");const n=UI.rllim||40;
+  if(!L.length)return `<div class="muted mhint">Nessuna sezione trovata.</div>`;
+  return `<div class="muted" style="font-size:.8rem">${L.length} sezioni</div>`+L.slice(0,n).map(r=>ruleItem(r,false)).join("")+(L.length>n?`<button class="btn sm ghost" data-a="rl-more">Mostra altre (${L.length-n})</button>`:"")}
+function vRulesLib(){const srcs=PACKS.filter(p=>(p.rules||[]).length).map(p=>p.name);const caps=[...new Set(PACKRULES.filter(r=>!UI.rlsrc||r.fo===UI.rlsrc).map(r=>r.c))];
+  if(UI.rlcap&&!caps.includes(UI.rlcap))UI.rlcap="";
+  return `<section class="card"><h2>Regole e opzioni</h2><p class="muted" style="margin:0;font-size:.85rem">Le sezioni dei tuoi manuali: sottoclassi, razze, talenti, background, regole e strumenti per il Master. Testi ricavati dalla scansione dei manuali, quindi può esserci qualche refuso. Restano solo su questo dispositivo.</p>
+    <div class="row"><input id="rl-q" placeholder="Cerca: talenti, mezzorco, Collegio della Spada…" value="${esc(UI.rlq||"")}" style="flex:1 1 180px" autocomplete="off">
+    <select id="rl-src" aria-label="Manuale"><option value="">Tutti i manuali</option>${srcs.map(n=>`<option ${UI.rlsrc===n?"selected":""}>${esc(n)}</option>`).join("")}</select>
+    <select id="rl-cap" aria-label="Capitolo"><option value="">Tutti i capitoli</option>${caps.map(c=>`<option ${UI.rlcap===c?"selected":""}>${esc(c)}</option>`).join("")}</select></div>
+    <div class="list" id="rl-res">${rulesResults()}</div></section>`}
 function vBestiaryLib(){const crs=[["","Tutti i GS"],["0","GS 0"],["0.125","GS 1/8"],["0.25","GS 1/4"],["0.5","GS 1/2"],["1","GS 1"],["2-4","GS 2–4"],["h","GS 5+"]];
   return `<section class="card"><h2>Bestiario</h2><p class="muted" style="margin:0;font-size:.85rem">I mostri del manuale base (SRD 5.1)${PACKS.some(p=>(p.monsters||[]).length)?" e dei tuoi manuali":""}. Tocca un nome per la scheda completa.</p>
     <div class="row"><input id="mp-q" placeholder="Cerca: goblin, drago, scheletro…" value="${esc(UI.mpq||"")}" style="flex:1 1 180px" autocomplete="off"><select id="mp-cr" aria-label="Grado di sfida">${crs.map(([v,l])=>`<option value="${v}" ${(UI.mpcr||"")===v?"selected":""}>${l}</option>`).join("")}</select>${PACKS.length?`<select id="mp-src" aria-label="Fonte"><option value="">Tutte le fonti</option><option value="srd" ${UI.mpsrc==="srd"?"selected":""}>Manuale base (SRD)</option>${PACKS.map(p=>`<option ${UI.mpsrc===p.name?"selected":""}>${esc(p.name)}</option>`).join("")}</select>`:""}</div>
@@ -1276,7 +1313,7 @@ function vEncounter(){const k=camp();const B=k.master.bestiary;
     <div class="row"><input id="mp-q" placeholder="Cerca: goblin, drago, scheletro…" value="${esc(UI.mpq||"")}" style="flex:1 1 180px" autocomplete="off"><select id="mp-cr" aria-label="Grado di sfida">${crs.map(([v,l])=>`<option value="${v}" ${(UI.mpcr||"")===v?"selected":""}>${l}</option>`).join("")}</select>${PACKS.length?`<select id="mp-src" aria-label="Fonte"><option value="">Tutte le fonti</option><option value="srd" ${UI.mpsrc==="srd"?"selected":""}>Manuale base (SRD)</option>${PACKS.map(p=>`<option ${UI.mpsrc===p.name?"selected":""}>${esc(p.name)}</option>`).join("")}</select>`:""}</div>
     <div class="list" id="mp-res">${presetResults()}</div>
     <p class="muted" style="margin:0;font-size:.72rem">Dati dei mostri da System Reference Document 5.1, Wizards of the Coast, licenza CC-BY-4.0. Tradotti in italiano, distanze in metri.</p></section>`}
-document.addEventListener("change",e=>{if(e.target.id==="mp-cr"||e.target.id==="mp-src"){UI[e.target.id==="mp-cr"?"mpcr":"mpsrc"]=e.target.value;const r=$("#mp-res");if(r)r.innerHTML=presetResults()}});
+document.addEventListener("change",e=>{if(e.target.id==="rl-src"||e.target.id==="rl-cap"){UI[e.target.id==="rl-src"?"rlsrc":"rlcap"]=e.target.value;UI.rllim=40;renderView();return}if(e.target.id==="mp-cr"||e.target.id==="mp-src"){UI[e.target.id==="mp-cr"?"mpcr":"mpsrc"]=e.target.value;const r=$("#mp-res");if(r)r.innerHTML=presetResults()}});
 
 /* ambienti */
 function vEnvs(){const k=camp();const E=k.master.envs;const d=UI.envDraft;
