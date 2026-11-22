@@ -228,6 +228,12 @@ details.it>summary .t.tt{display:grid;gap:1px;white-space:normal}
 .epic-veil span{display:block;font:500 1rem var(--f-display);color:#E6C989;margin-top:8px;letter-spacing:.1em}
 @keyframes veil{0%{opacity:0}20%{opacity:1}70%{opacity:1}100%{opacity:0}}
 @media (prefers-reduced-motion:reduce){.epic::before,.epic-crown{animation:none}.epic-veil{display:none}}
+body.no-nav .tabs,body.no-nav .bnav{display:none!important}
+@media (max-width:720px){body.no-nav main{padding-bottom:90px}body.no-nav .fab{bottom:calc(16px + env(safe-area-inset-bottom,0px))!important}}
+.lib{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:10px}
+.lib-b{display:grid;gap:2px;justify-items:start;text-align:left;padding:12px 14px;border:1px solid var(--gold);border-radius:12px;background:var(--sunk);color:inherit;font:inherit;cursor:pointer}
+.lib-b span{font-size:1.6rem;line-height:1}.lib-b b{font-family:var(--f-head,inherit)}.lib-b small{color:var(--muted)}
+.lib-b:hover{border-color:var(--accent)}
 .mcmd{position:relative}
 .mcmd input{width:100%;font-size:1rem;padding:10px 12px;border:1.5px solid var(--gold);border-radius:10px;background:var(--paper,var(--surface))}
 #mcmd-res{display:grid;gap:10px}#mcmd-res:empty{display:none}
@@ -358,6 +364,10 @@ const TABS=[["home","Home"],["scheda","Scheda"],["inventario","Inventario"],["ca
 const TAB_IC={home:"🏰",scheda:"📜",inventario:"🎒",capacita:"✨",magie:"🔮",combattimento:"⚔️",master:"👑",missioni:"🗺️",diario:"📖",mondo:"🧙"};
 const TAB_DESC={home:"Scegli campagna e personaggio",scheda:"Caratteristiche, PF, abilità",inventario:"Oggetti, peso e monete",capacita:"Privilegi e talenti",magie:"Incantesimi e slot",combattimento:"Iniziativa e turni",master:"Tutto il gruppo a colpo d'occhio",missioni:"Missioni e oggetti chiave",diario:"Resoconti delle sessioni",mondo:"Personaggi e luoghi incontrati"};
 const BNAV=["home","scheda","magie","combattimento"];
+const MODE_TABS={char:["scheda","inventario","capacita","magie","combattimento","missioni","diario","mondo"],master:["master","missioni","diario","mondo"]};
+const MODE_BNAV={char:["scheda","inventario","magie","combattimento"],master:["master","missioni","diario","mondo"]};
+const LIB_TABS=["home","libro","bestiario"];
+TAB_IC.libro="📚";TAB_IC.bestiario="👹";
 
 
 /* ============ dati del Manuale del Giocatore (5e) ============ */
@@ -724,13 +734,17 @@ function heal(c,n){n=Math.max(0,Math.floor(n));if(!n)return;if(c.hp.cur===0)c.de
 
 /* ============ rendering ============ */
 function render(){renderTop();renderView();if(UI.drawer)renderDrawer()}
+function curMode(){if(LIB_TABS.includes(UI.tab))return "home";if(UI.tab==="master")return UI.mode="master";if(["scheda","inventario","capacita","magie"].includes(UI.tab))return UI.mode="char";return UI.mode||"char"}
 function renderTop(){
   const k=camp();
   const c=ch();const masterView=["master","combattimento","missioni","diario","mondo"].includes(UI.tab);
   $("#ctx").innerHTML=UI.tab==="home"||!k?`<small>Taccuino dell'Avventuriero</small><b>Le tue campagne</b>`:`<small>${esc(k.name)}</small><b>${masterView&&UI.tab==="master"?"Vista Master":c?esc(c.name):"Nessun personaggio"}</b>`;
-  $("#tabs").innerHTML=TABS.map(([id,l])=>`<button role="tab" aria-selected="${UI.tab===id}" data-a="tab" data-v="${id}"><span class="ic" aria-hidden="true">${TAB_IC[id]}</span>${l}</button>`).join("");
-  const inMore=!BNAV.includes(UI.tab);const lbl=Object.fromEntries(TABS);
-  $("#bnav").innerHTML=BNAV.map(id=>`<button data-a="tab" data-v="${id}" aria-current="${UI.tab===id}"><span class="ic" aria-hidden="true">${TAB_IC[id]}</span>${id==="combattimento"?"Combatti":lbl[id]}</button>`).join("")+`<button data-a="more" aria-current="${inMore}"><span class="ic" aria-hidden="true">${inMore?TAB_IC[UI.tab]:"🧭"}</span>${inMore?esc(lbl[UI.tab]).replace("PNG e luoghi","Mondo"):"Altro"}</button>`;
+  const md=curMode();const lbl=Object.fromEntries(TABS);const shown=md==="home"?[]:MODE_TABS[md];const bn=md==="home"?[]:MODE_BNAV[md];
+  document.body.classList.toggle("no-nav",md==="home");
+  if(LIB_TABS.includes(UI.tab)&&UI.tab!=="home")$("#ctx").innerHTML=`<small>Biblioteca</small><b>${UI.tab==="libro"?"Manuale degli incantesimi":"Bestiario"}</b>`;
+  $("#tabs").innerHTML=[["home","Home"],...shown.map(id=>[id,lbl[id]])].map(([id,l])=>`<button role="tab" aria-selected="${UI.tab===id}" data-a="tab" data-v="${id}"><span class="ic" aria-hidden="true">${TAB_IC[id]}</span>${l}</button>`).join("");
+  const inMore=md==="char"&&!bn.includes(UI.tab);
+  $("#bnav").innerHTML=md==="master"?["home",...bn].map(id=>`<button data-a="tab" data-v="${id}" aria-current="${UI.tab===id}"><span class="ic" aria-hidden="true">${TAB_IC[id]}</span>${id==="mondo"?"Mondo":lbl[id]}</button>`).join(""):bn.map(id=>`<button data-a="tab" data-v="${id}" aria-current="${UI.tab===id}"><span class="ic" aria-hidden="true">${TAB_IC[id]}</span>${id==="combattimento"?"Combatti":lbl[id]}</button>`).join("")+(md!=="char"?"":`<button data-a="more" aria-current="${inMore}"><span class="ic" aria-hidden="true">${inMore?TAB_IC[UI.tab]:"🧭"}</span>${inMore?esc(lbl[UI.tab]).replace("PNG e luoghi","Mondo"):"Altro"}</button>`);
   renderVital();
 }
 function renderCloud(){const el=$("#cloud");if(!el)return;const t=UI.cloud||"";el.className="sync"+(/errore|non raggiungibile|troppo grande/.test(t)?" err":/sincronizzo|offline|cerco|attivo/.test(t)?" wait":"");el.title=t;el.setAttribute("aria-label","Stato: "+t)}
@@ -739,7 +753,7 @@ function hpColor(p){return p>50?"var(--hp)":p>25?"var(--hp-mid)":"var(--hp-low)"
 function renderVital(){
   const c=ch();const v=$("#vital");
   renderCloud();
-  if(!c||UI.tab==="home"||UI.tab==="master"){v.hidden=true;v.innerHTML="";return}v.hidden=false;
+  if(!c||LIB_TABS.includes(UI.tab)||UI.tab==="master"){v.hidden=true;v.innerHTML="";return}v.hidden=false;
   const p=hpPct(c);const tp=c.hp.max?clamp(c.hp.temp/c.hp.max*100,0,100):0;
   const tags=[...c.conditions.map(x=>`<span class="tag acc">${esc(x)}</span>`),c.exhaustion>0?`<span class="tag acc">Esaurimento ${c.exhaustion}</span>`:"",c.concentration?`<span class="tag gold">◎ ${esc(c.concentration)}</span>`:"",...c.effects.map(e=>`<span class="tag">${esc(e.name)}${e.rounds?` ${e.rounds}r`:""}</span>`)].join("");
   v.innerHTML=`<div class="hpbar" title="Punti ferita"><i style="width:${p}%;background:${hpColor(p)}"></i><b style="width:${tp}%"></b><span>${c.hp.cur}/${c.hp.max}${c.hp.temp?` +${c.hp.temp}`:""} PF</span></div>
@@ -750,7 +764,9 @@ function renderVital(){
 function renderView(){
   ls.set("ddf-tab",UI.tab);
   const k=camp(),c=ch();const v=$("#view");
+  v.classList.remove("cls-themed");v.removeAttribute("style");
   if(UI.tab==="home"){v.innerHTML=vHome();return}
+  if(UI.tab==="libro"||UI.tab==="bestiario"){v.innerHTML=`<div><button class="btn sm ghost" data-a="tab" data-v="home">← Torna alla Home</button></div>`+(UI.tab==="libro"?vCompendio():vBestiaryLib());v.querySelectorAll("details[data-id]").forEach(d=>d.addEventListener("toggle",()=>{d.open?UI.open.add(d.dataset.id):UI.open.delete(d.dataset.id)}));return}
   if(!k){v.innerHTML=`<div class="card"><h2>Nessuna campagna</h2><button class="btn pri" data-a="new-camp">Crea campagna</button></div>`;return}
   const charTabs=["scheda","inventario","capacita","magie"];
   if(charTabs.includes(UI.tab)&&!c){v.innerHTML=`<div class="card"><h2>Nessun personaggio in questa campagna</h2><p class="muted">Aggiungi il tuo eroe per usare scheda, inventario, capacità e magie.</p><div><button class="btn pri" data-a="new-char">Nuovo personaggio</button></div></div>`;return}
@@ -941,7 +957,7 @@ function spellCard(v,opt={}){
 function compFiltered(){const f=UI.comp;const q=f.q.trim().toLowerCase();
   return SPELLDB.filter(o=>(f.lvl===""||o.l===Number(f.lvl))&&(!f.cls||o.cls.includes(f.cls))&&(!f.sch||o.s===f.sch)&&(!f.conc||o.k)&&(!f.rit||o.ri)&&(!q||o.n.toLowerCase().includes(q)||(o.en||"").toLowerCase().includes(q)||((TR[o.i]||{}).n||"").toLowerCase().includes(q)))}
 function vCompendio(){
-  const c=ch();if(UI.comp.cls===null)UI.comp.cls=guessClass(c.cls);
+  const c=UI.tab==="libro"?null:ch();if(UI.comp.cls===null&&c)UI.comp.cls=guessClass(c.cls);
   if(!SPELLDB){loadSpells();return `<section class="card"><h2>Compendio incantesimi</h2><div class="empty">${spellErr?"Non riesco a caricare l'elenco degli incantesimi. Riprova più tardi.":"Carico 319 incantesimi…"}</div></section>`}
   const f=UI.comp;
   return `<section class="card">
@@ -958,10 +974,10 @@ function vCompendio(){
   </section>`;
 }
 function compResults(){
-  const c=ch();const list=compFiltered();const shown=list.slice(0,UI.comp.limit);const mine=new Set(c.spells.map(s=>s.srd).filter(Boolean));
+  const c=UI.tab==="libro"?null:ch();const list=compFiltered();const shown=list.slice(0,UI.comp.limit);const mine=new Set(c?c.spells.map(s=>s.srd).filter(Boolean):[]);
   return `<div class="list">${shown.map(o=>{const v=dbView(o);const id="cp-"+o.i;return `<details class="it" data-id="${id}" ${isOpen(id)}><summary>
       <span class="tag num">${o.l===0?"T":o.l+"°"}</span><span class="t tt"><span>${esc(v.name)}</span>${v.brief?`<small>${esc(v.brief)}</small>`:""}</span>${o.k?`<span class="tag gold">C</span>`:""}${o.ri?`<span class="tag">R</span>`:""}
-      ${mine.has(o.i)?`<span class="tag acc">✓ nel libro</span>`:`<button class="btn sm" data-a="sp-learn" data-i="${o.i}">Aggiungi</button>`}</summary>
+      ${!c?"":mine.has(o.i)?`<span class="tag acc">✓ nel libro</span>`:`<button class="btn sm" data-a="sp-learn" data-i="${o.i}">Aggiungi</button>`}</summary>
     <div class="body">${spellCard(v,{noBrief:1})}</div></details>`}).join("")||`<div class="empty">Nessun incantesimo con questi filtri.</div>`}</div>
     ${list.length>shown.length?`<div style="margin-top:8px"><button class="btn sm" data-a="comp-more">Mostra altri (${list.length-shown.length})</button></div>`:`<div class="muted" style="font-size:.8rem;margin-top:6px">${list.length} incantesimi</div>`}`;
 }
@@ -1023,7 +1039,9 @@ function vHome(){
   return `<section class="card"><h2 style="margin:0">Benvenuto, avventuriero</h2>
       <p class="muted" style="margin:0">Scegli il personaggio con cui giocare, oppure apri la campagna come Master.</p>
       <div class="row"><button class="btn pri sm" data-a="new-camp">Nuova campagna</button>${fbEnabled()?`<button class="btn sm" data-a="join">Entra con un codice</button>`:""}</div></section>
-    ${camps.map(cardFor).join("")||`<div class="empty">Nessuna campagna. Creane una per iniziare.</div>`}`;
+    ${camps.map(cardFor).join("")||`<div class="empty">Nessuna campagna. Creane una per iniziare.</div>`}
+    <section class="card"><h2 style="margin:0">Biblioteca</h2><p class="muted" style="margin:0">Da consultare quando vuoi, senza aprire un personaggio.</p>
+      <div class="lib"><button class="lib-b" data-a="tab" data-v="libro"><span aria-hidden="true">🔮</span><b>Manuale degli incantesimi</b><small>319 incantesimi in italiano</small></button><button class="lib-b" data-a="tab" data-v="bestiario"><span aria-hidden="true">👹</span><b>Bestiario</b><small>334 mostri del manuale base</small></button></div></section>`;
 }
 
 /* ---- Master ---- */
@@ -1209,7 +1227,12 @@ document.addEventListener("submit",e=>{if(e.target.id==="mcmd-form"){e.preventDe
 function presetResults(){if(!MONDB&&!monErr)loadMons();const q=nrm(UI.mpq||"");const cr=UI.mpcr||"";
   let L=presetList().filter(p=>(!q||nrm(p.name+" "+(p.en||"")).includes(q))&&(!cr||(cr==="h"?crNum(p.cr)>=5:Math.abs(crNum(p.cr)-Number(cr))<.01||(cr==="2-4"&&crNum(p.cr)>=2&&crNum(p.cr)<=4))));
   const tot=L.length;L=L.slice(0,40);
-  return (L.map(p=>`<div class="mrow2"><button class="mrow" data-a="mp-info" data-k="${p.key}"><b>${esc(p.name)}</b><small class="muted">GS ${esc(p.cr)} · CA ${p.ac} · PF ${esc(p.hp)}${p.t?" · "+esc(p.t):""}</small></button><button class="btn sm" data-a="mp-save" data-k="${p.key}" title="Salva nel mio bestiario">☆</button><button class="btn sm" data-a="mp-add" data-k="${p.key}" title="Aggiungi al combattimento">+ ⚔</button></div>`).join("")||`<div class="empty">Nessun mostro trovato.</div>`)+(tot>40?`<div class="muted mhint">Altri ${tot-40}: affina la ricerca.</div>`:"")+(!MONDB?`<div class="muted mhint">${monErr?"Elenco completo non disponibile offline: mostro i preset base.":"Carico 334 mostri…"}</div>`:"")}
+  return (L.map(p=>`<div class="mrow2"><button class="mrow" data-a="mp-info" data-k="${p.key}"><b>${esc(p.name)}</b><small class="muted">GS ${esc(p.cr)} · CA ${p.ac} · PF ${esc(p.hp)}${p.t?" · "+esc(p.t):""}</small></button>${UI.tab==="bestiario"?"":`<button class="btn sm" data-a="mp-save" data-k="${p.key}" title="Salva nel mio bestiario">☆</button><button class="btn sm" data-a="mp-add" data-k="${p.key}" title="Aggiungi al combattimento">+ ⚔</button>`}</div>`).join("")||`<div class="empty">Nessun mostro trovato.</div>`)+(tot>40?`<div class="muted mhint">Altri ${tot-40}: affina la ricerca.</div>`:"")+(!MONDB?`<div class="muted mhint">${monErr?"Elenco completo non disponibile offline: mostro i preset base.":"Carico 334 mostri…"}</div>`:"")}
+function vBestiaryLib(){const crs=[["","Tutti i GS"],["0","GS 0"],["0.125","GS 1/8"],["0.25","GS 1/4"],["0.5","GS 1/2"],["1","GS 1"],["2-4","GS 2–4"],["h","GS 5+"]];
+  return `<section class="card"><h2>Bestiario</h2><p class="muted" style="margin:0;font-size:.85rem">I mostri del manuale base (SRD 5.1). Tocca un nome per la scheda completa.</p>
+    <div class="row"><input id="mp-q" placeholder="Cerca: goblin, drago, scheletro…" value="${esc(UI.mpq||"")}" style="flex:1 1 180px" autocomplete="off"><select id="mp-cr" aria-label="Grado di sfida">${crs.map(([v,l])=>`<option value="${v}" ${(UI.mpcr||"")===v?"selected":""}>${l}</option>`).join("")}</select></div>
+    <div class="list" id="mp-res">${presetResults()}</div>
+    <p class="muted" style="margin:0;font-size:.72rem">Dati da System Reference Document 5.1, Wizards of the Coast, licenza CC-BY-4.0. Nomi e attacchi tradotti; i testi delle abilità speciali sono ancora in inglese.</p></section>`}
 function vEncounter(){const k=camp();const B=k.master.bestiary;
   const crs=[["","Tutti i GS"],["0","GS 0"],["0.125","GS 1/8"],["0.25","GS 1/4"],["0.5","GS 1/2"],["1","GS 1"],["2-4","GS 2–4"],["h","GS 5+"]];
   return vCombat(true)+`<section class="card"><div class="card-h"><h2>Il mio bestiario</h2><button class="btn sm" data-a="mb-new">+ Nuovo mostro</button></div>
@@ -1266,7 +1289,7 @@ document.addEventListener("focusin",e=>{if(e.target.id==="mcmd"&&!UI.mq){const r
 const MA={
   mtab:b=>{UI.mtab=b.dataset.v;window.scrollTo({top:0})},
   "mcmd-roll":()=>{const q=$("#mcmd").value.trim();roll(q,q);return "noRender"},
-  "mp-info":b=>{const t=presetGet(b.dataset.k);if(!t)return "noRender";modal(`<h2>${esc(t.name)}</h2>${monCard(t)}<div class="row"><input type="number" inputmode="numeric" id="mi-n" value="1" min="1" style="width:60px" aria-label="Quanti"><button class="btn pri" data-a="mp-add" data-k="${b.dataset.k}">Aggiungi al combattimento</button><button class="btn" data-a="mp-save" data-k="${b.dataset.k}">☆ Salva nel bestiario</button><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
+  "mp-info":b=>{const t=presetGet(b.dataset.k);if(!t)return "noRender";if(UI.tab==="bestiario"){modal(`<h2>${esc(t.name)}</h2>${monCard(t)}<div><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"}modal(`<h2>${esc(t.name)}</h2>${monCard(t)}<div class="row"><input type="number" inputmode="numeric" id="mi-n" value="1" min="1" style="width:60px" aria-label="Quanti"><button class="btn pri" data-a="mp-add" data-k="${b.dataset.k}">Aggiungi al combattimento</button><button class="btn" data-a="mp-save" data-k="${b.dataset.k}">☆ Salva nel bestiario</button><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
   "mb-info":b=>{const t=camp().master.bestiary.find(x=>x.id===b.dataset.id);if(!t)return "noRender";modal(`<h2>${esc(t.name)}</h2>${monCard(t)}<div class="row"><input type="number" inputmode="numeric" id="mi-n" value="1" min="1" style="width:60px" aria-label="Quanti"><button class="btn pri" data-a="mb-add" data-id="${t.id}">Aggiungi al combattimento</button><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
   "mon-info":b=>{const e=camp().combat.list.find(x=>x.id===b.dataset.e);const t=e&&mon4entry(e);if(!t)return "noRender";modal(`<h2>${esc(e.name)}</h2>${monCard(t)}<div><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
   "mp-add":b=>{const t=presetGet(b.dataset.k);if(!t)return "noRender";const n=$("#mi-n")?numIn("#mi-n"):1;closeModal();addMonsters(t,n,b.dataset.k.startsWith("s:")?{srd:t.src}:{base:t.name})},
@@ -1444,7 +1467,7 @@ const A={
   "cmb-clear":()=>{confirmBox("Terminare il combattimento e svuotare la lista? I PF dei personaggi restano come sono.","Termina",()=>{camp().combat={round:1,turn:0,list:[],started:false}});return "noRender"},
   "add-obj":b=>{const q=camp().quests.find(x=>x.id===b.dataset.q);const o={id:uid(),text:"",done:false};q.objectives.push(o);setTimeout(()=>{const el=$("#"+fid(`k.quests#${q.id}.objectives#${o.id}.text`));if(el)el.focus()},50)},
   "del-obj":b=>{const q=camp().quests.find(x=>x.id===b.dataset.q);q.objectives=q.objectives.filter(o=>o.id!==b.dataset.id)},
-  more:()=>{modal(`<h2>Dove vuoi andare?</h2><div class="more">${TABS.map(([id,l])=>`<button data-a="tab-go" data-v="${id}" aria-current="${UI.tab===id}"><span class="ic" aria-hidden="true">${TAB_IC[id]}</span><b>${l}</b><small>${TAB_DESC[id]}</small></button>`).join("")}</div><div><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
+  more:()=>{modal(`<h2>Dove vuoi andare?</h2><div class="more">${[["home","Home"],...TABS.filter(([id])=>MODE_TABS.char.includes(id))].map(([id,l])=>`<button data-a="tab-go" data-v="${id}" aria-current="${UI.tab===id}"><span class="ic" aria-hidden="true">${TAB_IC[id]}</span><b>${l}</b><small>${TAB_DESC[id]}</small></button>`).join("")}</div><div><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
   "tab-go":b=>{closeModal();UI.tab=b.dataset.v;window.scrollTo({top:0})},
   give:b=>{const c=ch();const it=c.inv.find(x=>x.id===b.dataset.id);if(!it)return "noRender";const others=camp().chars.filter(x=>x.id!==c.id);const q=Math.max(1,Number(it.qty)||1);
     modal(`<h2>Dai ${esc(it.name||"oggetto")}</h2>
