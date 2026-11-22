@@ -434,7 +434,7 @@ const ls={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k
 /* ============ modelli ============ */
 function newChar(name){
   const slots={};for(let i=1;i<=9;i++)slots[i]={max:0,used:0};
-  return {id:uid(),name:name||"Nuovo eroe",player:"",race:"",cls:"",subclass:"",level:1,background:"",alignment:"",xp:0,
+  return {id:uid(),name:name||"Nuovo eroe",player:"",race:"",cls:"",subclass:"",level:1,background:"",alignment:"",deity:"",xp:0,
     ab:{FOR:10,DES:10,COS:10,INT:10,SAG:10,CAR:10},abTemp:{FOR:0,DES:0,COS:0,INT:0,SAG:0,CAR:0},saves:{},skills:{},
     ac:10,speed:"9 m",initMisc:0,hp:{cur:10,max:10,temp:0},hitDie:8,hdUsed:0,death:{s:0,f:0},
     conditions:[],exhaustion:0,effects:[],inspiration:false,concentration:"",
@@ -816,7 +816,7 @@ function vScheda(){
     <div class="card-h"><h2>Identità</h2><div class="row"><span class="tag">Bonus competenza <b data-live="pb">${sgn(pb(c))}</b></span><button class="btn pri sm" data-a="levelup" ${c.level>=20?"disabled":""}>⬆ Sali di livello</button></div></div>
     <div class="fields">
       ${fld("Nome",inp("c.name"))}${fld("Giocatore",inp("c.player"))}${fld("Razza",choice("c.race",RACES))}${fld("Classe",choice("c.cls",Object.keys(CLASS_DATA)))}
-      ${CLASS_DATA[c.cls]?fld(CLASS_DATA[c.cls].sub,choice("c.subclass",CLASS_DATA[c.cls].subs)):fld("Sottoclasse",inp("c.subclass"))}${fld("Livello",inp("c.level",{attrs:'min="1" max="20"'}))}${fld("Background",choice("c.background",BACKGROUNDS))}${fld("Allineamento",choice("c.alignment",ALIGNMENTS))}
+      ${CLASS_DATA[c.cls]?fld(CLASS_DATA[c.cls].sub,choice("c.subclass",CLASS_DATA[c.cls].subs)):fld("Sottoclasse",inp("c.subclass"))}${fld("Livello",inp("c.level",{attrs:'min="1" max="20"'}))}${fld("Background",choice("c.background",BACKGROUNDS))}${fld("Allineamento",choice("c.alignment",ALIGNMENTS))}${fld("Divinità",inp("c.deity",{ph:"es. Tyr, Selûne, nessuna",attrs:'autocomplete="off"'}))}
       ${fld("Punti esperienza",inp("c.xp"))}${fld("Dado vita",sel("c.hitDie",[[6,"d6"],[8,"d8"],[10,"d10"],[12,"d12"]],{num:1}))}
     </div>
   </section>
@@ -922,7 +922,7 @@ function vMagie(){
     ${c.concentration?`<div class="conc"><span>Concentrazione: <b>${esc(c.concentration)}</b></span><button class="btn sm" data-a="end-conc">Interrompi</button></div>`:""}
   </section>
   <section class="card">
-    <div class="card-h"><h2>Slot incantesimo</h2><button class="btn sm" data-a="reset-slots">Ripristina tutti</button></div>
+    <div class="card-h"><h2>Slot incantesimo</h2><div class="row"><button class="btn sm pri" data-a="upd-slots" title="Applica i nuovi massimi">Aggiorna</button><button class="btn sm" data-a="reset-slots">Ripristina tutti</button></div></div>
     <div class="slots">${[1,2,3,4,5,6,7,8,9].map(l=>{const s=c.slots[l];return `<div class="slot"><div class="row" style="justify-content:space-between"><b>Liv. ${l}</b><span class="row" style="gap:4px"><span class="lbl">max</span>${inp(`c.slots.${l}.max`,{type:"number",attrs:'min="0" max="9"'})}</span></div>
       <div class="pips">${Array.from({length:Math.min(Number(s.max)||0,9)},(_,i)=>`<button class="pip ${i<s.max-s.used?"":"used"}" data-a="slot" data-v="${l}" data-i="${i}" aria-label="Slot ${l}"></button>`).join("")||`<span class="muted" style="font-size:.8rem">—</span>`}</div></div>`}).join("")}</div>
   </section>
@@ -1446,7 +1446,7 @@ function listOf(btn){return (btn.dataset.r==="k"?camp():ch())[btn.dataset.l]}
 const NEW={
   attacks:()=>({id:uid(),name:"Nuovo attacco",bonus:0,dmg:"1d6",type:""}),
   features:()=>({id:uid(),name:"Nuova capacità",source:"",max:0,used:0,recharge:"long",desc:""}),
-  spells:()=>({id:uid(),name:"Nuovo incantesimo",level:1,school:"",time:"1 azione",range:"",comp:"",duration:"",conc:false,ritual:false,prepared:true,dmg:"",desc:""}),
+  spells:()=>({id:uid(),name:"Nuovo incantesimo",level:1,school:"",time:"1 azione",range:"",comp:"",duration:"",conc:false,ritual:false,prepared:false,dmg:"",desc:""}),
   quests:()=>({id:uid(),title:"Nuova missione",giver:"",status:"attiva",reward:"",desc:"",objectives:[]}),
   questItems:()=>({id:uid(),name:"Nuovo oggetto",holder:"",quest:"",desc:""}),
   sessions:()=>({id:uid(),date:today(),title:`Sessione ${camp().sessions.length+1}`,text:""}),
@@ -1509,6 +1509,7 @@ const A={
     f.used=i<left?f.used+1:Math.max(0,f.used-1)},
   slot:b=>{const s=ch().slots[b.dataset.v];const left=s.max-s.used;s.used=Number(b.dataset.i)<left?s.used+1:Math.max(0,s.used-1)},
   "reset-slots":()=>{const c=ch();for(let i=1;i<=9;i++)c.slots[i].used=0},
+  "upd-slots":()=>{const c=ch();for(let i=1;i<=9;i++){const q=$("#"+fid(`c.slots.${i}.max`));if(q)c.slots[i].max=Math.max(0,Math.min(9,Number(q.value)||0));c.slots[i].used=Math.min(Number(c.slots[i].used)||0,c.slots[i].max)}toast("Slot aggiornati")},
   "only-prep":b=>{UI.onlyPrepared=b.checked;render();return "noRender"},
   cast:(b,e)=>{e.preventDefault();const c=ch(),s=c.spells.find(x=>x.id===b.dataset.id);const lv=Number(s.level);
     if(lv===0){afterCast(c,s,0);return}
@@ -1681,7 +1682,7 @@ Object.assign(A,{
   "comp-more":()=>{UI.comp.limit+=50;rerenderComp();return "noRender"},
   "sp-learn":(b,e)=>{e.preventDefault();const o=SPELLDB.find(x=>x.i===b.dataset.i);const c=ch();const v=dbView(o);
     const m=amod(c,c.spellAbility);const dmg=(v.dmg||"").replace(/\+?MOD/,m?sgn(m):"");
-    c.spells.push({id:uid(),srd:o.i,tr:v.translated,brief:v.brief,name:v.name,level:o.l,school:o.s,time:o.t,range:o.r,comp:o.c,material:v.material,duration:o.d,conc:v.conc,ritual:v.ritual,prepared:true,dmg,desc:v.desc,higher:v.higher,ts:v.ts,classes:o.cls});
+    c.spells.push({id:uid(),srd:o.i,tr:v.translated,brief:v.brief,name:v.name,level:o.l,school:o.s,time:o.t,range:o.r,comp:o.c,material:v.material,duration:o.d,conc:v.conc,ritual:v.ritual,prepared:false,dmg,desc:v.desc,higher:v.higher,ts:v.ts,classes:o.cls});
     toast(`${esc(v.name)} aggiunto ai tuoi incantesimi.`);touch();rerenderComp();
     const sb=document.querySelector('[data-a="sp-view"][data-v="mine"]');if(sb)sb.textContent=`I miei incantesimi (${c.spells.length})`;return "noRender"},
   "sp-tr":async b=>{const sm=await getSample();if(!sm){toast("La traduzione automatica non è disponibile qui.");render();return}
@@ -1715,7 +1716,7 @@ Object.assign(A,{
     let slotCh=false;for(let l=1;l<=9;l++){const v=Math.max(0,Math.min(9,Number($("#lu-slot-"+l).value)||0));if(v!==Number(c.slots[l].max)){slotCh=true;c.slots[l].max=v;c.slots[l].used=Math.min(c.slots[l].used,v)}}
     if(slotCh)done.push("slot aggiornati");
     let ns=0;document.querySelectorAll("#lu-spells .lu-row").forEach(r=>{const n=r.querySelector(".ls-name").value.trim();if(!n)return;ns++;
-      c.spells.push({id:uid(),name:n,level:Number(r.querySelector(".ls-lv").value),school:"",time:"1 azione",range:"",comp:"",duration:"",conc:false,ritual:false,prepared:true,dmg:"",desc:""})});
+      c.spells.push({id:uid(),name:n,level:Number(r.querySelector(".ls-lv").value),school:"",time:"1 azione",range:"",comp:"",duration:"",conc:false,ritual:false,prepared:false,dmg:"",desc:""})});
     if(ns)done.push(`${ns} incantesim${ns>1?"i":"o"}`);
     const sk=$("#lu-skill").value;if(sk){c.skills[sk]=Math.min(2,(c.skills[sk]||0)+1);done.push(SKILLS.find(x=>x[0]===sk)[1])}
     const pr=$("#lu-profs").value.trim();if(pr){c.profs=(c.profs?c.profs+", ":"")+pr;done.push(pr)}
