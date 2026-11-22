@@ -830,7 +830,7 @@ function vInv(){
   <section class="card">
     <div class="card-h"><h2>Monete</h2><span class="tag gold">Totale <b data-live="wealth">${LIVE.wealth()}</b></span></div>
     <div class="stats">${COINS.map(([k,n])=>`<div class="stat"><span class="lbl">${n} (${k})</span>${inp("c.coins."+k)}</div>`).join("")}</div>
-    <div class="row"><input id="coin-amt" type="number" inputmode="numeric" placeholder="Importo" style="width:110px">${sel0("coin-type",COINS.map(([k,n])=>[k,n]),"mo")}<button class="btn sm" data-a="coin" data-v="1">Aggiungi</button><button class="btn sm" data-a="coin" data-v="-1">Spendi</button></div>
+    <div class="row"><input id="coin-amt" type="number" inputmode="numeric" placeholder="Importo" style="width:110px">${sel0("coin-type",COINS.map(([k,n])=>[k,n]),"mo")}<button class="btn sm" data-a="coin" data-v="1">Aggiungi</button><button class="btn sm" data-a="coin" data-v="-1">Spendi</button>${camp().chars.length>1?`<button class="btn sm" data-a="give-coins">🤝 Dai a…</button>`:""}</div>
   </section>
   <section class="card">
     <div class="card-h"><h2>Oggetti</h2><span class="tag">Peso <b data-live="weight">${LIVE.weight()}</b></span></div>
@@ -841,7 +841,7 @@ function vInv(){
       <div class="body"><div class="fields">${fld("Nome",inp(`c.inv#${i.id}.name`))}${fld("Quantità",inp(`c.inv#${i.id}.qty`,{type:"number"}))}${fld("Peso unitario (kg)",inp(`c.inv#${i.id}.weight`,{type:"number",attrs:'step="0.1"'}))}
         <label class="f"><span class="lbl">Equipaggiato</span>${inp(`c.inv#${i.id}.equipped`,{type:"checkbox"})}</label></div>
         ${fld("Note",ta(`c.inv#${i.id}.notes`,"Proprietà, cariche, valore…",2))}
-        <div class="row"><button class="btn sm danger" data-a="del" data-l="inv" data-id="${i.id}">Elimina</button><button class="btn sm" data-a="to-quest" data-id="${i.id}">Sposta tra gli oggetti missione</button></div></div></details>`).join("")||`<div class="empty">Zaino vuoto.</div>`}</div>
+        <div class="row"><button class="btn sm" data-a="give" data-id="${i.id}" ${camp().chars.length>1?"":"disabled title=\"Serve un altro personaggio nella campagna\""}>🤝 Dai a…</button><button class="btn sm danger" data-a="del" data-l="inv" data-id="${i.id}">Elimina</button><button class="btn sm" data-a="to-quest" data-id="${i.id}">Sposta tra gli oggetti missione</button></div></div></details>`).join("")||`<div class="empty">Zaino vuoto.</div>`}</div>
     <div class="row"><input id="new-item" placeholder="Nuovo oggetto, es. Corda di canapa 15 m" style="flex:1 1 200px"><button class="btn pri sm" data-a="add-item">Aggiungi</button></div>
   </section>`;
 }
@@ -1198,6 +1198,24 @@ const A={
   "del-obj":b=>{const q=camp().quests.find(x=>x.id===b.dataset.q);q.objectives=q.objectives.filter(o=>o.id!==b.dataset.id)},
   more:()=>{modal(`<h2>Dove vuoi andare?</h2><div class="more">${TABS.map(([id,l])=>`<button data-a="tab-go" data-v="${id}" aria-current="${UI.tab===id}"><span class="ic" aria-hidden="true">${TAB_IC[id]}</span><b>${l}</b><small>${TAB_DESC[id]}</small></button>`).join("")}</div><div><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
   "tab-go":b=>{closeModal();UI.tab=b.dataset.v;window.scrollTo({top:0})},
+  give:b=>{const c=ch();const it=c.inv.find(x=>x.id===b.dataset.id);if(!it)return "noRender";const others=camp().chars.filter(x=>x.id!==c.id);const q=Math.max(1,Number(it.qty)||1);
+    modal(`<h2>Dai ${esc(it.name||"oggetto")}</h2>
+      ${q>1?`<label class="f"><span class="lbl">Quanti (hai ${q})</span><input id="give-n" type="number" inputmode="numeric" min="1" max="${q}" value="${q}"></label>`:""}
+      <span class="lbl">A chi?</span><div class="hm-grid">${others.map(o=>{const t=clsTheme(o);return `<button class="hm-char cls" style="${clsVars(o)}" data-a="give-to" data-item="${it.id}" data-to="${o.id}"><span class="cls-emb" aria-hidden="true">${t.ic}</span><span class="hm-n">${esc(o.name)}</span><span class="muted hm-s">${esc([o.cls,"liv. "+o.level].filter(Boolean).join(" · "))}${o.player?` — ${esc(o.player)}`:""}</span></button>`}).join("")}</div>
+      <div><button class="btn ghost" data-a="modal-close">Annulla</button></div>`);return "noRender"},
+  "give-to":b=>{const k=camp(),c=ch();const it=c.inv.find(x=>x.id===b.dataset.item);const to=k.chars.find(x=>x.id===b.dataset.to);if(!it||!to)return;
+    const have=Math.max(1,Number(it.qty)||1);const n=clamp(Math.floor(numIn("#give-n")||have),1,have);
+    const same=to.inv.find(x=>(x.name||"").trim().toLowerCase()===(it.name||"").trim().toLowerCase()&&Number(x.weight)===Number(it.weight));
+    if(same)same.qty=(Number(same.qty)||0)+n;else to.inv.push({...it,id:uid(),qty:n,equipped:false});
+    if(n>=have)c.inv=c.inv.filter(x=>x.id!==it.id);else it.qty=have-n;
+    closeModal();toast(`<div>${n>1?n+"× ":""}<b>${esc(it.name||"Oggetto")}</b></div><div>passa a ${esc(to.name)}</div>`)},
+  "give-coins":()=>{const c=ch();const others=camp().chars.filter(x=>x.id!==c.id);
+    modal(`<h2>Dai monete</h2><div class="row"><input id="gc-n" type="number" inputmode="numeric" min="1" placeholder="Quante" style="width:110px">${sel0("gc-t",COINS.map(([k,n])=>[k,`${n} (hai ${Number(c.coins[k])||0})`]),"mo")}</div>
+      <span class="lbl">A chi?</span><div class="hm-grid">${others.map(o=>{const t=clsTheme(o);return `<button class="hm-char cls" style="${clsVars(o)}" data-a="gc-to" data-to="${o.id}"><span class="cls-emb" aria-hidden="true">${t.ic}</span><span class="hm-n">${esc(o.name)}</span><span class="muted hm-s">${esc([o.cls,"liv. "+o.level].filter(Boolean).join(" · "))}</span></button>`}).join("")}</div>
+      <div><button class="btn ghost" data-a="modal-close">Annulla</button></div>`);setTimeout(()=>{const i=$("#gc-n");if(i)i.focus()},30);return "noRender"},
+  "gc-to":b=>{const c=ch();const to=camp().chars.find(x=>x.id===b.dataset.to);const t=$("#gc-t").value;const n=Math.floor(numIn("#gc-n"));const have=Number(c.coins[t])||0;
+    if(n<=0){toast("Scrivi quante monete dare.");return "noRender"}if(n>have){toast(`Hai solo ${have} ${t}.`);return "noRender"}
+    c.coins[t]=have-n;to.coins[t]=(Number(to.coins[t])||0)+n;closeModal();toast(`<div><b>${n} ${t}</b> passano a ${esc(to.name)}</div>`)},
   "cloud-info":()=>{toast(`<div>${esc(UI.cloud)}</div>`);return "noRender"},
   "home-pick":b=>{S.active=b.dataset.k;const k=camp();k.activeChar=b.dataset.c;UI.tab="scheda";window.scrollTo(0,0)},
   "home-master":b=>{S.active=b.dataset.k;UI.tab="master";window.scrollTo(0,0);
