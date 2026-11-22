@@ -1187,10 +1187,13 @@ function packTx(mode,fn){return packDB().then(db=>new Promise((res,rej)=>{const 
 const packMons=d=>d.concat(...PACKS.map(p=>(p.monsters||[]).map(o=>({...o,fo:p.name}))));
 const packSpells=d=>d.concat(...PACKS.map(p=>(p.spells||[]).map(o=>({...o,fo:p.name}))));
 function packsApply(){memCheck();PACKRULES=[].concat(...PACKS.map(p=>(p.rules||[]).map(r=>({...r,fo:p.name}))));if(MON_SRD)MONDB=packMons(MON_SRD);if(SPELL_SRD)SPELLDB=packSpells(SPELL_SRD);refreshMonLists();if(["home","libro","bestiario","master"].includes(UI.tab))renderView()}
-function packsLoad(){packTx("readonly",st=>st.getAll()).then(L=>{PACKS=(L||[]).sort((a,b)=>(a.name||"").localeCompare(b.name||""));if(PACKS.length)packsApply()}).catch(()=>{})}
+const unBundle=d=>d&&d.kind==="ddf-bundle"&&Array.isArray(d.packs)?d.packs.filter(isPack):isPack(d)?[d]:[];
+async function packsBuiltin(){if(!(window.claude&&window.claude.use))return [];try{const r=await fetch("manuali.json");if(!r.ok)return [];return unBundle(await r.json()).map(p=>({...p,builtin:true}))}catch(e){return []}}
+async function packsLoad(){let L=[];try{L=await packTx("readonly",st=>st.getAll())||[]}catch(e){}
+  const B=await packsBuiltin();const ids=new Set(L.map(p=>p.id));PACKS=L.concat(B.filter(p=>!ids.has(p.id))).sort((a,b)=>(a.name||"").localeCompare(b.name||""));if(PACKS.length)packsApply()}
 const isPack=d=>d&&d.kind==="ddf-pack"&&d.id&&(Array.isArray(d.monsters)||Array.isArray(d.spells)||Array.isArray(d.rules));
 async function importPacks(list){let n=0;for(const d of list){const p={id:String(d.id),name:String(d.name||d.id),monsters:d.monsters||[],spells:d.spells||[],rules:Array.isArray(d.rules)?d.rules:[],importedAt:Date.now()};try{await packTx("readwrite",st=>st.put(p));PACKS=PACKS.filter(x=>x.id!==p.id).concat(p);n++}catch(e){toast("Non riesco a salvare il manuale su questo dispositivo (spazio pieno?).");return}}
-  if(n){packsApply();const p=list[list.length-1];toast(`Manuale importato: <b>${esc(p.name||p.id)}</b> (${packCounts(p)}). Resta solo su questo dispositivo.`,5000)}}
+  if(n){packsApply();const p=list[list.length-1];toast(n>1?`Importati ${n} manuali: <b>${list.map(x=>esc(x.name||x.id)).join(", ")}</b>. Restano solo su questo dispositivo.`:`Manuale importato: <b>${esc(p.name||p.id)}</b> (${packCounts(p)}). Resta solo su questo dispositivo.`,6000)}}
 /* ============ memoria usata ============ */
 const MB=1048576,LS_LIM=5e6,FB_LIM=MB,PRIV_LIM=250000;
 const u8=s=>new Blob([s]).size;
@@ -1212,7 +1215,7 @@ function memCheck(){clearTimeout(memCheck.t);memCheck.t=setTimeout(async()=>{con
   toast(`⚠️ Memoria quasi piena: <b>${esc(i.n)}</b> usa ${fmtB(i.u)} di ${fmtB(i.l)} (${Math.round(memPct(i)*100)}%). Fai un backup e alleggerisci (es. rimuovi un manuale o vecchie voci del diario).`,9000)},3000)}
 function packCounts(p){return [(p.monsters||[]).length?p.monsters.length+" mostri":"",(p.spells||[]).length?p.spells.length+" incantesimi":"",(p.rules||[]).length?p.rules.length+" sezioni di regole":""].filter(Boolean).join(", ")}
 function packsBox(){return `<div class="packs"><div class="card-h" style="margin:0"><b>I miei manuali</b><button class="btn sm" data-a="pack-import">Importa manuale</button></div>
-  ${PACKS.length?PACKS.map(p=>`<div class="row" style="justify-content:space-between"><span>📦 <b>${esc(p.name)}</b> <small class="muted">${packCounts(p)}</small></span><button class="btn sm ghost" data-a="pack-del" data-id="${esc(p.id)}" aria-label="Rimuovi ${esc(p.name)}">✕</button></div>`).join(""):""}
+  ${PACKS.length?PACKS.map(p=>`<div class="row" style="justify-content:space-between"><span>📦 <b>${esc(p.name)}</b> <small class="muted">${packCounts(p)}</small></span><button class="btn sm ghost" data-a="pack-del" data-id="${esc(p.id)}" aria-label="Rimuovi ${esc(p.name)}" ${p.builtin?"hidden":""}>✕</button></div>`).join(""):""}
   <p class="muted" style="margin:0;font-size:.75rem">Puoi aggiungere i contenuti dei tuoi manuali da un file del Taccuino. Restano solo su questo dispositivo: non vengono caricati online né condivisi con i giocatori.</p></div>`}
 function refreshMonLists(){const a=document.getElementById("mcmd-res");if(a&&UI.mq)a.innerHTML=cmdResults(UI.mq);const b=document.getElementById("mp-res");if(b)b.innerHTML=presetResults()}
 function rerenderMaster(){const y=window.scrollY;renderView();window.scrollTo(0,y)}
@@ -1771,12 +1774,12 @@ $("#file-char").addEventListener("change",async e=>{
   if(bad)setTimeout(()=>toast(`${bad} file non ${bad>1?"sono schede":"è una scheda"} del Taccuino.`),ok.length?4600:0);
 });
 $("#file-pack").addEventListener("change",async e=>{const files=[...e.target.files];e.target.value="";const ok=[];let bad=0;
-  for(const f of files){try{const d=JSON.parse(await f.text());if(isPack(d))ok.push(d);else bad++}catch(err){bad++}}
+  for(const f of files){try{const d=JSON.parse(await f.text());{const u=unBundle(d);if(u.length)ok.push(...u);else bad++}}catch(err){bad++}}
   if(ok.length)importPacks(ok);if(bad)setTimeout(()=>toast(`${bad} file non ${bad>1?"sono manuali":"è un manuale"} del Taccuino.`),ok.length?5200:0)});
 let pendingImport=null;
 $("#file-import").addEventListener("change",async e=>{
   const f=e.target.files[0];e.target.value="";if(!f)return;
-  try{const d=JSON.parse(await f.text());if(isCharFile(d)){importChars([d.char]);return}if(isPack(d)){importPacks([d]);return}const list=Array.isArray(d)?d:d.campaigns;
+  try{const d=JSON.parse(await f.text());if(isCharFile(d)){importChars([d.char]);return}{const u=unBundle(d);if(u.length){importPacks(u);return}}const list=Array.isArray(d)?d:d.campaigns;
     if(!Array.isArray(list)||!list.length||!list.every(k=>k&&Array.isArray(k.chars)))throw new Error();
     pendingImport=list;
     modal(`<h2>Importa backup</h2><p style="margin:0">Il file contiene ${list.length} campagn${list.length>1?"e":"a"}: ${list.map(k=>`<b>${esc(k.name)}</b>`).join(", ")}.</p>
