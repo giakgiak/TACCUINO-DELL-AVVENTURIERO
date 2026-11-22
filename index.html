@@ -236,6 +236,7 @@ body.no-nav .tabs,body.no-nav .bnav{display:none!important}
 .lib-b:hover{border-color:var(--accent)}
 .codebox{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 10px;border:1px dashed var(--gold);border-radius:10px;background:var(--sunk)}
 .codebox b{font-size:1.05rem;letter-spacing:.05em;user-select:all;flex:1 1 auto}.codebox.off{border-style:solid;border-color:var(--line)}.codebox.off span{flex:1 1 160px}
+.msec{display:grid;gap:6px}.msec p{margin:0}
 .mcmd{position:relative}
 .mcmd input{width:100%;font-size:1rem;padding:10px 12px;border:1.5px solid var(--gold);border-radius:10px;background:var(--paper,var(--surface))}
 #mcmd-res{display:grid;gap:10px}#mcmd-res:empty{display:none}
@@ -1180,14 +1181,18 @@ function refreshMonLists(){const a=document.getElementById("mcmd-res");if(a&&UI.
 function rerenderMaster(){const y=window.scrollY;renderView();window.scrollTo(0,y)}
 const BASE_BY=Object.fromEntries(MON_BASE.map(m=>[nrm(m.name),m]));
 /* scheda mostro uniforme: {name,cr,type,ac,hp,init,speed,ab,attacks:[{name,bonus,dmg,type}],abilities,src} */
-function monFromSrd(o){const b=BASE_BY[nrm(o.n)];
-  const extra=[...o.sa.map(([n,x])=>`${n}: ${x}`),...o.act.map(([n,x])=>`${n}: ${x}`),...(o.leg||[]).map(([n,x])=>`Leggendaria – ${n}: ${x}`)].join("\n");
-  return{name:o.n,cr:o.cr,type:o.t,ac:o.ac,hp:o.hp,init:o.ini,speed:o.sp,ab:o.ab,src:o.i,
-    attacks:(b?b.attacks:o.atk).map(([n,bo,d,t])=>({name:n,bonus:bo,dmg:d,type:t})),abilities:b&&b.abilities?b.abilities+(o.act.length||o.leg.length?"\n"+[...o.act,...(o.leg||[])].map(([n,x])=>`${n}: ${x}`).join("\n"):""):extra}}
+const SIZE_IT={minuscola:"Minuscola",piccola:"Piccola",media:"Media",grande:"Grande",enorme:"Enorme",mastodontica:"Mastodontica"};
+function fmtType(t){if(!t)return "";const w=t.split(" ");const z=w[w.length-1];if(!SIZE_IT[z])return t;const ty=w.slice(0,-1).join(" ");return ty.charAt(0).toUpperCase()+ty.slice(1)+" di taglia "+SIZE_IT[z]}
+function monFromSrd(o){const b=BASE_BY[nrm(o.n)];const leg=o.leg||[];
+  const abilities=[...o.sa.map(([n,x])=>`${n}. ${x}`),...o.act.map(([n,x])=>`${n}. ${x}`),...leg.map(([n,x])=>`Leggendaria – ${n}. ${x}`)].join("\n");
+  return{name:o.n,cr:o.cr,type:fmtType(o.t),ac:o.ac,hp:o.hp,hpa:o.hpa,xp:o.xp,init:o.ini,speed:o.sp,ab:o.ab,src:o.i,sec:[["Tratti",o.sa],["Azioni",o.act],["Azioni leggendarie",leg]],
+    attacks:(b?b.attacks:o.atk).map(([n,bo,d,t])=>({name:n,bonus:bo,dmg:d,type:t})),abilities}}
 function monFromBase(m){return{name:m.name,cr:m.cr,type:"",ac:m.ac,hp:m.hp,init:m.init,speed:m.speed,ab:null,src:"",attacks:m.attacks.map(([n,bo,d,t])=>({name:n,bonus:bo,dmg:d,type:t})),abilities:m.abilities}}
-function presetList(){return MONDB?MONDB.map(o=>({key:"s:"+o.i,o,name:o.n,en:o.en,cr:o.cr,t:o.t,ac:o.ac,hp:o.hp,hpa:o.hpa})):MON_BASE.map((m,i)=>({key:"b:"+i,name:m.name,cr:m.cr,t:"",ac:m.ac,hp:m.hp}))}
+function presetList(){return MONDB?MONDB.map(o=>({key:"s:"+o.i,o,name:o.n,en:o.en,cr:o.cr,t:fmtType(o.t),ac:o.ac,hp:o.hp,hpa:o.hpa})):MON_BASE.map((m,i)=>({key:"b:"+i,name:m.name,cr:m.cr,t:"",ac:m.ac,hp:m.hp}))}
 function presetGet(key){if(key.startsWith("s:")){const o=MONDB&&MONDB.find(x=>x.i===key.slice(2));return o?monFromSrd(o):null}const m=MON_BASE[Number(key.slice(2))];return m?monFromBase(m):null}
 function mon4entry(e){const B=(camp().master||{bestiary:[]}).bestiary;if(e.monId){const t=B.find(x=>x.id===e.monId);if(t)return t}if(e.srd&&MONDB){const o=MONDB.find(x=>x.i===e.srd);if(o)return monFromSrd(o)}if(e.base){const m=MON_BASE.find(x=>x.name===e.base);if(m)return monFromBase(m)}return null}
+const stem=w=>w.length>3?w.replace(/[aeiou]+$/,"").replace(/h$/,""):w;
+function qMatch(q,hay){const ws=nrm(q).split(/\s+/).filter(Boolean);if(!ws.length)return true;const h=nrm(hay);return ws.every(w=>h.includes(stem(w)))}
 function crNum(cr){if(!cr)return 0;if(String(cr).includes("/")){const[a,b]=String(cr).split("/");return a/b}return Number(cr)||0}
 function addMonsters(t,n,ref){const k=camp();n=clamp(n||1,1,30);const same=k.combat.list.filter(e=>e.name.replace(/ \d+$/,"")===t.name).length;
   for(let i=1;i<=n;i++){const hr=/^\d+$/.test(String(t.hp).trim())?Number(t.hp):(parseRoll(t.hp)||{total:Number(t.hpa)||1}).total;const r=rnd(20),ini=r+(Number(t.init)||0);
@@ -1195,9 +1200,9 @@ function addMonsters(t,n,ref){const k=camp();n=clamp(n||1,1,30);const same=k.com
   sortCombat();toast(`${n>1?n+" × ":""}${esc(t.name)} in combattimento (iniziativa tirata).`)}
 function monStatLine(t){return [t.cr!==""&&t.cr!=null?`GS ${esc(t.cr)}`:"",`CA ${esc(t.ac)}`,`PF ${esc(t.hp)}`,`Iniz. ${sgn(Number(t.init)||0)}`,t.speed?esc(t.speed):""].filter(Boolean).join(" · ")}
 function monCard(t){const ab=t.ab?`<div class="msaves">${AB.map((a,i)=>`<span>${a}<br><b>${t.ab[i]}</b> <small>(${sgn(Math.floor((t.ab[i]-10)/2))})</small></span>`).join("")}</div>`:"";
-  return `<div class="muted" style="font-size:.85rem">${esc(t.type||"")}</div><div>${monStatLine(t)}</div>${ab}
+  return `<div class="muted" style="font-size:.85rem">${esc(t.type||"")}${t.xp?` · ${t.xp} PE`:""}</div><div>${monStatLine(t)}</div>${ab}
     ${t.attacks.length?`<div><span class="lbl">Attacchi</span><div class="list">${t.attacks.map(a=>`<div class="matk-l"><b>${esc(a.name)}</b> ${sgn(Number(a.bonus)||0)} al colpire · ${esc(a.dmg)} ${esc(a.type||"")}</div>`).join("")}</div></div>`:""}
-    ${t.abilities?`<div><span class="lbl">Abilità e azioni</span><div class="mtext">${esc(t.abilities)}</div></div>`:""}${t.notes?`<div><span class="lbl">Note</span><div class="mtext">${esc(t.notes)}</div></div>`:""}`}
+    ${t.sec?t.sec.filter(([,L])=>L.length).map(([h,L])=>`<div class="msec"><span class="lbl">${h}</span>${L.map(([n,x])=>`<p class="mtext"><b>${esc(n)}.</b> ${esc(x)}</p>`).join("")}</div>`).join(""):t.abilities?`<div><span class="lbl">Abilità e azioni</span><div class="mtext">${esc(t.abilities)}</div></div>`:""}${t.notes?`<div><span class="lbl">Note</span><div class="mtext">${esc(t.notes)}</div></div>`:""}`}
 function monAttack(e,a){const mode=UI.diceMode;const x=rnd(20),y=rnd(20);const d=mode==="adv"?Math.max(x,y):mode==="dis"?Math.min(x,y):x;const bonus=Number(a.bonus)||0;const tot=d+bonus;const crit=d===20,fum=d===1;
   const expr=crit?String(a.dmg).replace(/(\d*)d(\d+)/g,(m,n,f)=>`${Number(n||1)*2}d${f}`):a.dmg;const dm=parseRoll(expr);
   const who=`${e.name}: ${a.name}`;const pair=mode==="norm"?`${x}`:`${x}, ${y} → ${d}`;
@@ -1218,7 +1223,7 @@ function cmdResults(q){q=q.trim();
   if(!SPELLDB)loadSpells();else{const sp=SPELLDB.filter(o=>has(o.n+" "+(o.en||""))).slice(0,5);
     if(sp.length)out.push(`<div class="mres"><span class="lbl">Incantesimi</span>${sp.map(o=>{const v=dbView(o);return `<details class="it"><summary><span class="t">🔮 ${esc(v.name)} <small class="muted">${v.level?v.level+"° liv.":"trucchetto"} · ${esc(v.school)}</small></span></summary><div class="body"><div class="muted" style="font-size:.82rem">${esc([v.time,v.range,v.comp,v.duration+(v.conc?" (concentrazione)":"")].join(" · "))}</div><div class="mtext">${esc(v.desc)}</div>${v.higher?`<div class="mtext"><b>Ai livelli superiori.</b> ${esc(v.higher)}</div>`:""}</div></details>`}).join("")}</div>`)}
   if(!MONDB)loadMons();
-  const mons=presetList().filter(p=>has(p.name+" "+(p.en||""))).slice(0,6);
+  const mons=presetList().filter(p=>qMatch(q,p.name+" "+(p.en||""))).slice(0,6);
   const best=camp().master.bestiary.filter(t=>has(t.name)).slice(0,4);
   if(mons.length||best.length)out.push(`<div class="mres"><span class="lbl">Mostri</span>${best.map(t=>monRow(t.name,"Il mio bestiario · "+monStatLine(t),`data-a="mb-add" data-id="${t.id}"`,`data-a="mb-info" data-id="${t.id}"`)).join("")}${mons.map(p=>monRow(p.name,monStatLine({cr:p.cr,ac:p.ac,hp:p.hp,init:(p.o||{}).ini??(MON_BASE[Number(p.key.slice(2))]||{}).init})+(p.t?" · "+esc(p.t):""),`data-a="mp-add" data-k="${p.key}"`,`data-a="mp-info" data-k="${p.key}"`)).join("")}</div>`);
   const notes=camp().master.notes.filter(n=>has(n.title+" "+n.text)).slice(0,3);
@@ -1230,7 +1235,7 @@ document.addEventListener("submit",e=>{if(e.target.id==="mcmd-form"){e.preventDe
 
 /* incontro: preset + bestiario */
 function presetResults(){if(!MONDB&&!monErr)loadMons();const q=nrm(UI.mpq||"");const cr=UI.mpcr||"";
-  let L=presetList().filter(p=>(!q||nrm(p.name+" "+(p.en||"")).includes(q))&&(!cr||(cr==="h"?crNum(p.cr)>=5:Math.abs(crNum(p.cr)-Number(cr))<.01||(cr==="2-4"&&crNum(p.cr)>=2&&crNum(p.cr)<=4))));
+  let L=presetList().filter(p=>(!q||qMatch(q,p.name+" "+(p.en||"")+" "+(p.t||"")))&&(!cr||(cr==="h"?crNum(p.cr)>=5:Math.abs(crNum(p.cr)-Number(cr))<.01||(cr==="2-4"&&crNum(p.cr)>=2&&crNum(p.cr)<=4))));
   const tot=L.length;L=L.slice(0,40);
   return (L.map(p=>`<div class="mrow2"><button class="mrow" data-a="mp-info" data-k="${p.key}"><b>${esc(p.name)}</b><small class="muted">GS ${esc(p.cr)} · CA ${p.ac} · PF ${esc(p.hp)}${p.t?" · "+esc(p.t):""}</small></button>${UI.tab==="bestiario"?"":`<button class="btn sm" data-a="mp-save" data-k="${p.key}" title="Salva nel mio bestiario">☆</button><button class="btn sm" data-a="mp-add" data-k="${p.key}" title="Aggiungi al combattimento">+ ⚔</button>`}</div>`).join("")||`<div class="empty">Nessun mostro trovato.</div>`)+(tot>40?`<div class="muted mhint">Altri ${tot-40}: affina la ricerca.</div>`:"")+(!MONDB?`<div class="muted mhint">${monErr?"Elenco completo non disponibile offline: mostro i preset base.":"Carico 334 mostri…"}</div>`:"")}
 function vBestiaryLib(){const crs=[["","Tutti i GS"],["0","GS 0"],["0.125","GS 1/8"],["0.25","GS 1/4"],["0.5","GS 1/2"],["1","GS 1"],["2-4","GS 2–4"],["h","GS 5+"]];
@@ -1294,9 +1299,9 @@ document.addEventListener("focusin",e=>{if(e.target.id==="mcmd"&&!UI.mq){const r
 const MA={
   mtab:b=>{UI.mtab=b.dataset.v;window.scrollTo({top:0})},
   "mcmd-roll":()=>{const q=$("#mcmd").value.trim();roll(q,q);return "noRender"},
-  "mp-info":b=>{const t=presetGet(b.dataset.k);if(!t)return "noRender";if(UI.tab==="bestiario"){modal(`<h2>${esc(t.name)}</h2>${monCard(t)}<div><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"}modal(`<h2>${esc(t.name)}</h2>${monCard(t)}<div class="row"><input type="number" inputmode="numeric" id="mi-n" value="1" min="1" style="width:60px" aria-label="Quanti"><button class="btn pri" data-a="mp-add" data-k="${b.dataset.k}">Aggiungi al combattimento</button><button class="btn" data-a="mp-save" data-k="${b.dataset.k}">☆ Salva nel bestiario</button><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
-  "mb-info":b=>{const t=camp().master.bestiary.find(x=>x.id===b.dataset.id);if(!t)return "noRender";modal(`<h2>${esc(t.name)}</h2>${monCard(t)}<div class="row"><input type="number" inputmode="numeric" id="mi-n" value="1" min="1" style="width:60px" aria-label="Quanti"><button class="btn pri" data-a="mb-add" data-id="${t.id}">Aggiungi al combattimento</button><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
-  "mon-info":b=>{const e=camp().combat.list.find(x=>x.id===b.dataset.e);const t=e&&mon4entry(e);if(!t)return "noRender";modal(`<h2>${esc(e.name)}</h2>${monCard(t)}<div><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
+  "mp-info":b=>{const t=presetGet(b.dataset.k);if(!t)return "noRender";if(UI.tab==="bestiario"){modal(`<div class="card-h"><h2 style="margin:0">${esc(t.name)}</h2><button class="btn ghost" data-a="modal-close" aria-label="Chiudi">✕</button></div>${monCard(t)}<div><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"}modal(`<div class="card-h"><h2 style="margin:0">${esc(t.name)}</h2><button class="btn ghost" data-a="modal-close" aria-label="Chiudi">✕</button></div>${monCard(t)}<div class="row"><input type="number" inputmode="numeric" id="mi-n" value="1" min="1" style="width:60px" aria-label="Quanti"><button class="btn pri" data-a="mp-add" data-k="${b.dataset.k}">Aggiungi al combattimento</button><button class="btn" data-a="mp-save" data-k="${b.dataset.k}">☆ Salva nel bestiario</button><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
+  "mb-info":b=>{const t=camp().master.bestiary.find(x=>x.id===b.dataset.id);if(!t)return "noRender";modal(`<div class="card-h"><h2 style="margin:0">${esc(t.name)}</h2><button class="btn ghost" data-a="modal-close" aria-label="Chiudi">✕</button></div>${monCard(t)}<div class="row"><input type="number" inputmode="numeric" id="mi-n" value="1" min="1" style="width:60px" aria-label="Quanti"><button class="btn pri" data-a="mb-add" data-id="${t.id}">Aggiungi al combattimento</button><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
+  "mon-info":b=>{const e=camp().combat.list.find(x=>x.id===b.dataset.e);const t=e&&mon4entry(e);if(!t)return "noRender";modal(`<div class="card-h"><h2 style="margin:0">${esc(e.name)}</h2><button class="btn ghost" data-a="modal-close" aria-label="Chiudi">✕</button></div>${monCard(t)}<div><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
   "mp-add":b=>{const t=presetGet(b.dataset.k);if(!t)return "noRender";const n=$("#mi-n")?numIn("#mi-n"):1;closeModal();addMonsters(t,n,b.dataset.k.startsWith("s:")?{srd:t.src}:{base:t.name})},
   "mb-add":b=>{const t=camp().master.bestiary.find(x=>x.id===b.dataset.id);if(!t)return "noRender";const n=$("#mi-n")?numIn("#mi-n"):$("#bn-"+t.id)?numIn("#bn-"+t.id):1;closeModal();addMonsters(t,n,{monId:t.id})},
   "mp-save":b=>{const t=presetGet(b.dataset.k);if(!t)return "noRender";const id=uid();camp().master.bestiary.unshift({id,name:t.name,cr:t.cr,type:t.type,ac:t.ac,hp:t.hp,init:t.init,speed:t.speed,ab:t.ab,src:t.src,attacks:t.attacks.map(a=>({id:uid(),...a})),abilities:t.abilities||"",notes:""});closeModal();UI.open.add("mb-"+id);toast(`${esc(t.name)} salvato nel tuo bestiario: ora puoi modificarlo.`);if(UI.mtab!=="incontro"){UI.mtab="incontro"}},
