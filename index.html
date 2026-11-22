@@ -434,7 +434,7 @@ const ls={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k
 /* ============ modelli ============ */
 function newChar(name){
   const slots={};for(let i=1;i<=9;i++)slots[i]={max:0,used:0};
-  return {id:uid(),name:name||"Nuovo eroe",player:"",race:"",cls:"",subclass:"",level:1,background:"",alignment:"",xp:0,
+  return {id:uid(),name:name||"Nuovo eroe",player:"",race:"",cls:"",subclass:"",level:1,background:"",alignment:"",deity:"",xp:0,
     ab:{FOR:10,DES:10,COS:10,INT:10,SAG:10,CAR:10},abTemp:{FOR:0,DES:0,COS:0,INT:0,SAG:0,CAR:0},saves:{},skills:{},
     ac:10,speed:"9 m",initMisc:0,hp:{cur:10,max:10,temp:0},hitDie:8,hdUsed:0,death:{s:0,f:0},
     conditions:[],exhaustion:0,effects:[],inspiration:false,concentration:"",
@@ -816,7 +816,7 @@ function vScheda(){
     <div class="card-h"><h2>Identità</h2><div class="row"><span class="tag">Bonus competenza <b data-live="pb">${sgn(pb(c))}</b></span><button class="btn pri sm" data-a="levelup" ${c.level>=20?"disabled":""}>⬆ Sali di livello</button></div></div>
     <div class="fields">
       ${fld("Nome",inp("c.name"))}${fld("Giocatore",inp("c.player"))}${fld("Razza",choice("c.race",RACES))}${fld("Classe",choice("c.cls",Object.keys(CLASS_DATA)))}
-      ${CLASS_DATA[c.cls]?fld(CLASS_DATA[c.cls].sub,choice("c.subclass",CLASS_DATA[c.cls].subs)):fld("Sottoclasse",inp("c.subclass"))}${fld("Livello",inp("c.level",{attrs:'min="1" max="20"'}))}${fld("Background",choice("c.background",BACKGROUNDS))}${fld("Allineamento",choice("c.alignment",ALIGNMENTS))}
+      ${CLASS_DATA[c.cls]?fld(CLASS_DATA[c.cls].sub,choice("c.subclass",CLASS_DATA[c.cls].subs)):fld("Sottoclasse",inp("c.subclass"))}${fld("Livello",inp("c.level",{attrs:'min="1" max="20"'}))}${fld("Background",choice("c.background",BACKGROUNDS))}${fld("Allineamento",choice("c.alignment",ALIGNMENTS))}${fld("Divinità",inp("c.deity",{ph:"es. Tyr, Selûne, nessuna",attrs:'autocomplete="off"'}))}
       ${fld("Punti esperienza",inp("c.xp"))}${fld("Dado vita",sel("c.hitDie",[[6,"d6"],[8,"d8"],[10,"d10"],[12,"d12"]],{num:1}))}
     </div>
   </section>
