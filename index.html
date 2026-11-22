@@ -228,6 +228,25 @@ details.it>summary .t.tt{display:grid;gap:1px;white-space:normal}
 .epic-veil span{display:block;font:500 1rem var(--f-display);color:#E6C989;margin-top:8px;letter-spacing:.1em}
 @keyframes veil{0%{opacity:0}20%{opacity:1}70%{opacity:1}100%{opacity:0}}
 @media (prefers-reduced-motion:reduce){.epic::before,.epic-crown{animation:none}.epic-veil{display:none}}
+.mcmd{position:relative}
+.mcmd input{width:100%;font-size:1rem;padding:10px 12px;border:1.5px solid var(--gold);border-radius:10px;background:var(--paper,var(--surface))}
+#mcmd-res{display:grid;gap:10px}#mcmd-res:empty{display:none}
+.mres{display:grid;gap:6px}.mhint{font-size:.85rem}
+.mtext{white-space:pre-wrap;font-size:.9rem;line-height:1.45}
+.mrow{display:grid;gap:2px;text-align:left;width:100%;min-width:0;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:inherit;font:inherit;cursor:pointer}
+.mrow small{font-size:.78rem;overflow:hidden;text-overflow:ellipsis}
+.mrow:hover{border-color:var(--accent)}
+.mrow2{display:flex;gap:6px;align-items:stretch}.mrow2 .mrow{flex:1}
+.mnav{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:4px;border:1px solid var(--line);border-radius:12px;background:var(--sunk)}
+.mnav button{border:0;background:none;padding:9px 4px;border-radius:9px;font:600 .85rem var(--f-head,inherit);cursor:pointer;color:inherit;white-space:nowrap}
+.mnav button.on{background:var(--accent);color:var(--accent-fg,#fff);box-shadow:0 1px 3px rgba(0,0,0,.25)}
+@media (max-width:420px){.mnav button{font-size:.74rem;padding:8px 2px}}
+.matk{display:flex;flex-wrap:wrap;gap:4px}
+.matk-e{display:grid;grid-template-columns:minmax(0,2fr) 56px minmax(0,1.2fr) minmax(0,1.5fr) auto;gap:4px;align-items:center}
+.matk-e input{padding:5px 7px;min-width:0}
+@media (max-width:520px){.matk-e{grid-template-columns:minmax(0,1fr) 56px minmax(0,1fr) auto}.matk-e input:nth-child(4){grid-column:1/4;grid-row:2}}
+.envd{border:1px dashed var(--gold);border-radius:10px;padding:10px 12px;display:grid;gap:8px;background:var(--sunk)}
+.envd h3{margin:0}
 .mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr));gap:12px}
 .mcard{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:12px;display:grid;gap:8px;min-width:0}
 .mcard.down{border-color:var(--hp-low)}
@@ -410,7 +429,7 @@ function newChar(name){
 }
 function newCamp(name){
   return {id:uid(),name:name||"Nuova campagna",chars:[],activeChar:null,notes:"",sessions:[],quests:[],questItems:[],npcs:[],places:[],
-    combat:{round:1,turn:0,list:[]},updatedAt:Date.now()};
+    combat:{round:1,turn:0,list:[]},master:{bestiary:[],envs:[],notes:[]},updatedAt:Date.now()};
 }
 function demoCamp(){
   const k=newCamp("La Miniera Perduta (esempio)");
@@ -517,7 +536,7 @@ const fbEnabled=()=>!!(window.FIREBASE_CONFIG&&window.FIREBASE_CONFIG.projectId&
 const shareCode=k=>k&&k.share&&k.share.code;
 function newCode(){const A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";const r=new Uint32Array(16);crypto.getRandomValues(r);let s="";for(let i=0;i<16;i++){if(i&&i%4===0)s+="-";s+=A[r[i]%A.length]}return s}
 const normCode=c=>String(c||"").toUpperCase().replace(/[^A-Z0-9]/g,"").replace(/(.{4})(?=.)/g,"$1-");
-const LOCAL_KEYS=["share","__demo","activeChar","updatedAt","chars","id"];
+const LOCAL_KEYS=["share","__demo","activeChar","updatedAt","chars","id","master"];
 function campCore(k){const o={...k};for(const x of LOCAL_KEYS)delete o[x];return JSON.stringify(o)}
 function setShareStatus(t){UI.cloud=t;renderCloud()}
 async function fbStart(){
@@ -605,7 +624,7 @@ function load(){
   const d=demoCamp();d.__demo=true;S={campaigns:[d],active:d.id};
 }
 function migrate(){ // completa campi mancanti dopo aggiornamenti
-  for(const k of S.campaigns){const base=newCamp();for(const key in base)if(k[key]===undefined)k[key]=base[key];
+  for(const k of S.campaigns){const base=newCamp();for(const key in base)if(k[key]===undefined)k[key]=base[key];for(const key of ["bestiary","envs","notes"])if(!Array.isArray(k.master[key]))k.master[key]=[];
     for(const c of k.chars){const b=newChar();for(const key in b)if(c[key]===undefined)c[key]=b[key];for(let i=1;i<=9;i++)if(!c.slots[i])c.slots[i]={max:0,used:0}}}
 }
 
@@ -903,7 +922,7 @@ function vMagie(){
 let SPELLDB=null,spellErr=false;
 const TR=(()=>{try{return JSON.parse(ls.get("ddf-tr")||"{}")}catch(e){return{}}})();
 function upgradeMySpells(){if(!SPELLDB)return;const by=Object.fromEntries(SPELLDB.map(o=>[o.i,o]));let n=0;for(const k of S.campaigns)for(const c of k.chars)for(const s of c.spells){const o=s.srd&&by[s.srd];if(!o||!o.it)continue;if(!s.tr){s.tr=true;s.name=o.n;s.desc=o.x;s.higher=o.h||"";s.material=o.m||"";n++}if(!s.brief){s.brief=o.b;n++}}if(n){S.campaigns.forEach(k=>k.updatedAt=Date.now());save()}}
-function loadSpells(){if(SPELLDB||loadSpells.p)return;loadSpells.p=fetch("spells.json").then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{SPELLDB=d;upgradeMySpells();if(UI.tab==="magie")renderView()}).catch(()=>{spellErr=true;loadSpells.p=null;if(UI.tab==="magie")renderView()})}
+function loadSpells(){if(SPELLDB||loadSpells.p)return;loadSpells.p=fetch("spells.json").then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{SPELLDB=d;upgradeMySpells();if(UI.tab==="magie")renderView();const r=document.getElementById("mcmd-res");if(r&&UI.mq)r.innerHTML=cmdResults(UI.mq)}).catch(()=>{spellErr=true;loadSpells.p=null;if(UI.tab==="magie")renderView()})}
 const CLASSES=["Bardo","Chierico","Druido","Mago","Paladino","Ranger","Stregone","Warlock"];
 function guessClass(cls){const s=(cls||"").toLowerCase();return CLASSES.find(k=>s.includes(k.toLowerCase()))||""}
 function dbView(o){const t=o.it?{}:(TR[o.i]||{});return{brief:o.b||"",name:t.n||o.n,orig:o.en||(t.n?o.n:""),level:o.l,school:o.s,time:o.t,range:o.r,comp:o.c,material:o.m||"",duration:o.d,conc:!!o.k,ritual:!!o.ri,classes:o.cls,desc:t.x||o.x,higher:t.h||o.h||"",dmg:o.dm||"",ts:o.ts||"",dt:o.dt||"",srd:o.i,translated:!!(o.it||t.x)}}
@@ -954,7 +973,7 @@ async function getSample(){if(SAMPLE)return SAMPLE;if(SAMPLE===false||!window.cl
 
 /* ---- Combattimento ---- */
 function cmbStats(e){const k=camp();const c=e.charId&&k.chars.find(x=>x.id===e.charId);return c?{name:c.name,hp:c.hp.cur,max:c.hp.max,temp:c.hp.temp,ac:c.ac,c}:{name:e.name,hp:e.hp,max:e.max,temp:0,ac:e.ac,c:null}}
-function vCombat(){
+function vCombat(master){
   const k=camp();const cb=k.combat;const L=cb.list;
   return `<section class="card">
     <div class="card-h"><h2>Iniziativa</h2><div class="row"><span class="tag acc">Round <b class="num">${cb.round}</b></span>
@@ -964,7 +983,7 @@ function vCombat(){
       <div style="min-width:0;display:grid;gap:4px"><div class="row" style="gap:6px"><b style="overflow:hidden;text-overflow:ellipsis">${esc(s.name)}</b>${s.c?`<span class="tag acc">PG</span>`:""}<span class="tag">CA ${esc(s.ac)}</span>${cb.started&&i===cb.turn?`<span class="tag gold">di turno</span>`:""}</div>
         <div class="hpbar" style="height:16px;min-width:0"><i style="width:${p}%;background:${hpColor(p)}"></i><span style="line-height:16px;font-size:.72rem">${s.hp}/${s.max}${s.temp?` +${s.temp}`:""}</span></div>
         ${s.c&&(s.c.conditions.length||s.c.concentration)?`<div class="chips">${s.c.conditions.map(x=>`<span class="tag acc">${esc(x)}</span>`).join("")}${s.c.concentration?`<span class="tag gold">◎ ${esc(s.c.concentration)}</span>`:""}</div>`:""}
-        ${!s.c?`<input placeholder="Condizioni / note" data-b="k.combat.list#${e.id}.note" id="${fid("k.combat.list#"+e.id+".note")}" value="${esc(e.note||"")}" style="padding:3px 7px;font-size:.82rem">`:""}</div>
+        ${!s.c&&master?monPanel(e):""}${!s.c?`<input placeholder="Condizioni / note" data-b="k.combat.list#${e.id}.note" id="${fid("k.combat.list#"+e.id+".note")}" value="${esc(e.note||"")}" style="padding:3px 7px;font-size:.82rem">`:""}</div>
       <div class="dmg"><input type="number" inputmode="numeric" id="cd-${e.id}" placeholder="PF" aria-label="Quantità"><button class="btn sm" data-a="cmb-dmg" data-id="${e.id}">Danno</button><button class="btn sm" data-a="cmb-heal" data-id="${e.id}">Cura</button><button class="btn sm ghost" data-a="cmb-del" data-id="${e.id}" aria-label="Rimuovi">✕</button></div>
     </div>`}).join("")||`<div class="empty">Nessun combattente. Aggiungi il gruppo e i nemici, poi ordina per iniziativa.</div>`}</div>
     <div class="row"><button class="btn sm" data-a="cmb-party">+ Gruppo (tira iniziativa)</button><button class="btn sm" data-a="cmb-sort">Ordina</button><button class="btn sm danger" data-a="cmb-clear" ${L.length?"":"disabled"}>Termina combattimento</button></div>
@@ -1009,7 +1028,7 @@ function vHome(){
 
 /* ---- Master ---- */
 function slotsLeft(c){const out=[];for(let i=1;i<=9;i++){const s=c.slots[i];if(s&&Number(s.max)>0)out.push(`${i}°: ${Math.max(0,s.max-s.used)}/${s.max}`)}return out}
-function vMaster(){
+function vParty(){
   const k=camp();const L=k.chars;
   const cards=L.map(c=>{const p=hpPct(c);const dead=c.hp.cur<=0;const sl=slotsLeft(c);const caster=sl.length>0||c.spells.length>0;
     const tags=[...c.conditions.map(x=>`<span class="tag acc">${esc(x)}</span>`),c.exhaustion>0?`<span class="tag acc">Esaurimento ${c.exhaustion}</span>`:"",c.concentration?`<span class="tag gold">◎ ${esc(c.concentration)}</span>`:"",c.inspiration?`<span class="tag gold">Ispirazione</span>`:"",...c.effects.map(e=>`<span class="tag">${esc(e.name)}${e.rounds?` ${e.rounds}r`:""}</span>`),dead?`<span class="tag acc">TS morte ✓${c.death.s} ✗${c.death.f}</span>`:""].join("");
@@ -1041,6 +1060,235 @@ function vMaster(){
     ${L.length?`<div class="mgrid">${cards}</div>`:`<div class="empty">Nessun personaggio in questa campagna. Importa le schede dei giocatori.</div>`}
   </section>`;
 }
+
+/* ============ dati del Master: regole, bestiario base, generatore di ambienti ============ */
+const RULES=[
+{t:"Vantaggio e svantaggio",k:"vantaggio svantaggio tiro due d20",x:"Con vantaggio tiri due d20 e tieni il più alto; con svantaggio tieni il più basso. Se hai sia vantaggio sia svantaggio si annullano, anche se le fonti sono più d'una per lato. Ritiri (es. Fortunato) si applicano a uno solo dei dadi."},
+{t:"Prova di caratteristica",k:"prova abilità cd difficoltà check",x:"d20 + modificatore di caratteristica (+ competenza se competente nell'abilità) contro una CD. CD indicative: molto facile 5, facile 10, media 15, difficile 20, molto difficile 25, quasi impossibile 30."},
+{t:"Prove contrapposte",k:"contesa contrapposta confronto",x:"Entrambi tirano la prova indicata; vince il risultato più alto. In caso di pareggio la situazione resta com'era (chi tentava di cambiare le cose non ci riesce)."},
+{t:"Aiutare",k:"aiuto aiutare assistere azione",x:"Come azione dai a un alleato vantaggio alla sua prossima prova per un compito in cui puoi aiutare, oppure al suo prossimo attacco contro una creatura entro 1,5 m da te, purché avvenga prima dell'inizio del tuo turno successivo."},
+{t:"Prove di gruppo",k:"gruppo prova collettiva",x:"Ognuno tira; se almeno metà del gruppo supera la CD, il gruppo riesce. Utile per muoversi furtivi, orientarsi o arrampicarsi insieme."},
+{t:"Percezione passiva",k:"passiva percezione nascosto notare",x:"10 + tutti i modificatori della prova (Saggezza + competenza in Percezione). Vantaggio +5, svantaggio −5. Si confronta con le prove di Furtività di chi si nasconde."},
+{t:"Sorpresa",k:"sorpresa sorpreso imboscata",x:"Il DM confronta la Furtività di chi si nasconde con la Percezione passiva degli avversari. Chi non nota la minaccia è sorpreso: nel primo turno non può muoversi né agire e non può usare reazioni finché quel turno non termina."},
+{t:"Iniziativa e turno",k:"iniziativa turno round ordine",x:"All'inizio del combattimento ognuno tira d20 + Destrezza. Un round dura 6 secondi. Nel tuo turno puoi muoverti fino alla tua velocità e compiere un'azione; puoi avere anche un'azione bonus (se un privilegio te la concede), una reazione per round e una interazione gratuita con un oggetto."},
+{t:"Azioni in combattimento",k:"azioni attacco scatto disimpegno schivata nascondersi preparare cercare usare oggetto lanciare incantesimo",x:"Attacco; Lanciare un incantesimo; Scatto (movimento extra pari alla velocità); Disimpegno (il tuo movimento non provoca attacchi di opportunità); Schivata (attacchi contro di te con svantaggio, TS su Destrezza con vantaggio); Aiuto; Nascondersi; Preparare (scegli un innesco e una reazione); Cercare; Usare un oggetto."},
+{t:"Preparare un'azione",k:"preparare azione preparata innesco reazione",x:"Decidi un innesco percepibile e l'azione da fare; quando avviene, usi la reazione per eseguirla (o ignori l'innesco). Un incantesimo preparato va lanciato subito, tenuto con concentrazione e rilasciato con la reazione: se la concentrazione si rompe, l'incantesimo è perso."},
+{t:"Attacco di opportunità",k:"opportunità attacco reazione allontanarsi portata",x:"Quando una creatura ostile che puoi vedere esce dalla tua portata, puoi usare la reazione per un attacco in mischia contro di lei. Non lo provoca chi usa Disimpegno, chi viene teletrasportato o chi viene spostato senza usare movimento, azione o reazione."},
+{t:"Tiro per colpire",k:"attacco tiro colpire ca bonus",x:"d20 + modificatore (Forza in mischia, Destrezza a distanza, accurata a scelta) + competenza se competente con l'arma. Se il totale è pari o superiore alla CA del bersaglio, colpisci. 20 naturale colpisce sempre; 1 naturale manca sempre."},
+{t:"Colpo critico",k:"critico 20 naturale danni doppi",x:"Con un 20 naturale l'attacco è un critico: tira due volte tutti i dadi di danno dell'attacco (anche quelli extra, come Attacco furtivo o Punizione) e aggiungi i modificatori una volta sola."},
+{t:"Attacchi a distanza",k:"distanza gittata lunga mischia vicino arco",x:"Oltre la gittata normale e fino a quella lunga hai svantaggio; oltre la lunga non puoi attaccare. Hai svantaggio anche se una creatura ostile, che non è incapacitata e ti vede, è entro 1,5 m da te."},
+{t:"Combattere con due armi",k:"due armi leggera mano secondaria",x:"Quando attacchi con un'arma leggera in mischia, puoi usare l'azione bonus per attaccare con un'altra arma leggera nell'altra mano. Al danno del secondo attacco non aggiungi il modificatore di caratteristica, a meno che sia negativo."},
+{t:"Lottare (afferrare)",k:"lotta afferrare afferrato presa",x:"Al posto di uno dei tuoi attacchi: prova di Forza (Atletica) contro Forza (Atletica) o Destrezza (Acrobazia) del bersaglio, che non può essere più di una taglia più grande di te. Se vinci è afferrato (velocità 0). Per liberarsi usa un'azione e ripete la contesa. Puoi trascinarlo a metà velocità."},
+{t:"Spingere",k:"spingere spinta prono buttare a terra",x:"Al posto di uno dei tuoi attacchi: Forza (Atletica) contro Forza (Atletica) o Destrezza (Acrobazia). Se vinci lo butti prono o lo spingi di 1,5 m. Il bersaglio non può essere più di una taglia più grande di te."},
+{t:"Copertura",k:"copertura riparo muro mezza tre quarti totale",x:"Mezza copertura: +2 a CA e TS su Destrezza. Tre quarti: +5. Copertura totale: non puoi essere bersagliato direttamente da attacchi o incantesimi."},
+{t:"Bersagli invisibili e nascosti",k:"invisibile nascosto non visto cieco attaccare",x:"Attaccare una creatura che non puoi vedere: svantaggio. Se lei non può vedere te: hai vantaggio contro di lei. Se sei nascosto e attacchi, riveli la tua posizione, colpisca o manchi l'attacco."},
+{t:"Nascondersi",k:"nascondersi furtività nascosto",x:"Azione Nascondersi: prova di Destrezza (Furtività) contro la Percezione passiva (o attiva) di chi ti cerca. Non puoi nasconderti da chi ti vede chiaramente. Resti nascosto finché non vieni scoperto o fai rumore o attacchi."},
+{t:"Movimento e terreno difficile",k:"movimento terreno difficile strisciare scalare nuotare",x:"Nel terreno difficile ogni metro costa doppio. Scalare, nuotare e strisciare costano un metro extra per metro (salvo velocità specifiche). Puoi dividere il movimento prima e dopo l'azione. Puoi attraversare lo spazio di un alleato, non quello di un nemico (a meno che sia di due taglie diverse)."},
+{t:"Salto",k:"saltare salto lungo alto",x:"Salto in lungo con rincorsa (3 m): tanti piedi quanto il punteggio di Forza (circa 30 cm per punto); da fermo la metà. Salto in alto con rincorsa: 3 + modificatore di Forza piedi (circa 90 cm + 30 cm per punto); da fermo la metà."},
+{t:"Prono",k:"prono a terra rialzarsi",x:"Puoi muoverti solo strisciando. Hai svantaggio ai tiri per colpire. Gli attacchi contro di te hanno vantaggio se l'attaccante è entro 1,5 m, altrimenti svantaggio. Rialzarsi costa metà della velocità."},
+{t:"Danni e resistenze",k:"resistenza vulnerabilità immunità danni tipo",x:"Resistenza dimezza i danni di quel tipo, vulnerabilità li raddoppia, immunità li annulla. Si applicano dopo gli altri modificatori. Più resistenze allo stesso tipo contano come una."},
+{t:"Punti ferita temporanei",k:"pf temporanei temporanei",x:"Si perdono per primi e non si sommano tra loro: se ne ricevi di nuovi scegli se tenere i vecchi o i nuovi. Non sono cure e non riportano su da 0 PF. Durano fino a un riposo lungo salvo diversa indicazione."},
+{t:"Scendere a 0 PF e morte immediata",k:"0 pf zero morte morire privo di sensi massiccio",x:"A 0 PF cadi privo di sensi. Se i danni residui dopo averti portato a 0 sono pari o superiori ai tuoi PF massimi, muori sul colpo. I mostri di solito muoiono a 0 PF, a scelta del DM."},
+{t:"Tiri salvezza contro morte",k:"tiro salvezza morte stabilizzare morente",x:"A 0 PF, all'inizio di ogni tuo turno tira d20: 10 o più è un successo, sotto 10 un fallimento. 3 successi: sei stabile. 3 fallimenti: muori. 20 naturale: torni a 1 PF. 1 naturale: due fallimenti. Subire danni a 0 PF è un fallimento (un critico ne vale due)."},
+{t:"Stabilizzare",k:"stabilizzare medicina kit guaritore",x:"Azione: prova di Saggezza (Medicina) CD 10 su una creatura morente, o usare un kit del guaritore. Una creatura stabile resta a 0 PF ma non tira più salvezza contro morte; recupera 1 PF dopo 1d4 ore."},
+{t:"Concentrazione",k:"concentrazione incantesimo rompere ts costituzione",x:"Puoi concentrarti su un solo incantesimo alla volta. Quando subisci danni fai un TS su Costituzione con CD 10 o metà dei danni (il più alto); se fallisci perdi l'incantesimo. Si rompe anche se sei incapacitato o muori."},
+{t:"Lanciare incantesimi",k:"incantesimi componenti verbale somatica materiale slot",x:"V: parlare. S: almeno una mano libera. M: componente o focus (quelle con costo indicato vanno possedute; se consumate si perdono). Gli slot si spendono al livello scelto (pari o superiore). Se lanci un incantesimo come azione bonus, nel turno puoi lanciare solo trucchetti con l'azione."},
+{t:"Rituali",k:"rituale rituali 10 minuti",x:"Un incantesimo con l'etichetta rituale può essere lanciato in 10 minuti in più senza spendere slot, se la tua classe permette di lanciare rituali."},
+{t:"CD e attacco degli incantesimi",k:"cd incantesimo tiro salvezza attacco incantesimo",x:"CD = 8 + competenza + modificatore della caratteristica da incantatore. Tiro per colpire con incantesimo = competenza + modificatore della caratteristica da incantatore."},
+{t:"Riposo breve",k:"riposo breve dadi vita",x:"Almeno 1 ora di attività leggera. Puoi spendere Dadi Vita: per ognuno tira il dado + modificatore di Costituzione e recuperi quei PF. Alcuni privilegi si ricaricano."},
+{t:"Riposo lungo",k:"riposo lungo dormire 8 ore",x:"Almeno 8 ore, di cui al massimo 2 di attività leggera. Recuperi tutti i PF e metà dei Dadi Vita totali (minimo 1). Esaurimento −1 se hai mangiato e bevuto. Un solo riposo lungo ogni 24 ore."},
+{t:"Esaurimento",k:"esaurimento fatica livelli",x:"1: svantaggio alle prove di caratteristica. 2: velocità dimezzata. 3: svantaggio a tiri per colpire e TS. 4: PF massimi dimezzati. 5: velocità 0. 6: morte. Gli effetti si sommano; un riposo lungo con cibo e acqua toglie un livello."},
+{t:"Accecato",k:"accecato cieco condizione",x:"Non vede e fallisce le prove che richiedono la vista. I suoi attacchi hanno svantaggio; gli attacchi contro di lui hanno vantaggio."},
+{t:"Affascinato",k:"affascinato charme condizione",x:"Non può attaccare né bersagliare con effetti dannosi chi lo ha affascinato. Chi lo ha affascinato ha vantaggio alle prove per interagire socialmente con lui."},
+{t:"Afferrato",k:"afferrato lotta condizione",x:"Velocità 0. Termina se chi afferra è incapacitato o se un effetto li allontana fuori portata."},
+{t:"Assordato",k:"assordato sordo condizione",x:"Non sente e fallisce le prove che richiedono l'udito."},
+{t:"Avvelenato",k:"avvelenato veleno condizione",x:"Svantaggio ai tiri per colpire e alle prove di caratteristica."},
+{t:"Incapacitato",k:"incapacitato condizione",x:"Non può compiere azioni né reazioni."},
+{t:"Intralciato",k:"intralciato trattenuto rete ragnatela condizione",x:"Velocità 0. I suoi attacchi hanno svantaggio, quelli contro di lui vantaggio. Svantaggio ai TS su Destrezza."},
+{t:"Invisibile",k:"invisibile condizione",x:"Non può essere visto senza magia o sensi speciali; ai fini del nascondersi è pesantemente oscurato. I suoi attacchi hanno vantaggio, quelli contro di lui svantaggio."},
+{t:"Paralizzato",k:"paralizzato condizione",x:"Incapacitato, non si muove né parla. Fallisce i TS su Forza e Destrezza. Attacchi contro di lui con vantaggio; ogni colpo da entro 1,5 m è critico."},
+{t:"Pietrificato",k:"pietrificato pietra condizione",x:"Trasformato in sostanza inanimata, peso ×10, non invecchia. Incapacitato, non si muove né parla, non percepisce. Attacchi contro di lui con vantaggio; fallisce TS su Forza e Destrezza; resistenza a tutti i danni; immune a veleno e malattie (sospesi)."},
+{t:"Privo di sensi",k:"privo di sensi svenuto incosciente condizione",x:"Incapacitato, non si muove né parla, non percepisce l'ambiente. Lascia cadere ciò che tiene e cade prono. Fallisce TS su Forza e Destrezza. Attacchi contro di lui con vantaggio; ogni colpo da entro 1,5 m è critico."},
+{t:"Spaventato",k:"spaventato paura condizione",x:"Svantaggio a prove e tiri per colpire finché la fonte della paura è in vista. Non può avvicinarsi volontariamente alla fonte."},
+{t:"Stordito",k:"stordito condizione",x:"Incapacitato, non si muove, parla a fatica. Fallisce i TS su Forza e Destrezza. Gli attacchi contro di lui hanno vantaggio."},
+{t:"Visione e luce",k:"luce fioca buio oscurità scurovisione oscurato",x:"Area leggermente oscurata (luce fioca, nebbia leggera): svantaggio alle prove di Percezione basate sulla vista. Pesantemente oscurata (buio, nebbia fitta): di fatto accecati. Scurovisione: vedi nel buio come in luce fioca (in bianco e nero) entro la sua gittata."},
+{t:"Caduta",k:"caduta cadere danni",x:"1d6 danni contundenti ogni 3 m di caduta, fino a un massimo di 20d6. Atterri prono, a meno che eviti i danni."},
+{t:"Soffocamento e apnea",k:"soffocare trattenere respiro apnea annegare",x:"Puoi trattenere il respiro per 1 + modificatore di Costituzione minuti (minimo 30 secondi). Poi resisti per un numero di round pari al modificatore di Costituzione (minimo 1); all'inizio del turno successivo scendi a 0 PF e stai morendo."},
+{t:"Ritmo di viaggio",k:"viaggio marcia passo veloce lento chilometri",x:"Veloce: 6 km/ora, 45 km/giorno, −5 alla Percezione passiva. Normale: 4,5 km/ora, 36 km/giorno. Lento: 3 km/ora, 27 km/giorno, si può procedere furtivi. Marcia forzata oltre 8 ore: TS Costituzione ogni ora o esaurimento."},
+{t:"Capacità di carico",k:"carico peso trasportare sollevare",x:"Puoi trasportare 7,5 kg per punto di Forza. Spingere, trascinare o sollevare: il doppio. Creature Grandi raddoppiano, Enormi ×4, Minuscole dimezzano."},
+{t:"Ispirazione",k:"ispirazione eroica vantaggio dm",x:"Il DM la assegna per un buon gioco di ruolo. La spendi per avere vantaggio a un tiro per colpire, TS o prova. Ne puoi avere una sola alla volta; puoi cederla a un compagno."},
+{t:"Monete e cambio",k:"monete cambio oro argento rame platino electrum",x:"1 mp = 10 mo; 1 mo = 2 me = 10 ma = 100 mr. 50 monete pesano circa mezzo chilo."},
+];
+const MON_BASE=[
+{name:"Goblin",cr:"1/4",ac:15,hp:"2d6",init:2,speed:"9 m",attacks:[["Scimitarra",4,"1d6+2","taglienti"],["Arco corto",4,"1d6+2","perforanti, gittata 24/96 m"]],abilities:"Fuga agile: può usare Disimpegno o Nascondersi come azione bonus. Scurovisione 18 m."},
+{name:"Coboldo",cr:"1/8",ac:12,hp:"2d6-2",init:2,speed:"9 m",attacks:[["Pugnale",4,"1d4+2","perforanti"],["Fionda",4,"1d4+2","contundenti, gittata 9/36 m"]],abilities:"Tattiche di branco: vantaggio se un alleato non incapacitato è entro 1,5 m dal bersaglio. Sensibilità alla luce solare: svantaggio ad attacchi e Percezione visiva alla luce del sole."},
+{name:"Bandito",cr:"1/8",ac:12,hp:"2d8+2",init:1,speed:"9 m",attacks:[["Scimitarra",3,"1d6+1","taglienti"],["Balestra leggera",3,"1d8+1","perforanti, gittata 24/96 m"]],abilities:""},
+{name:"Lupo",cr:"1/4",ac:13,hp:"2d8+2",init:2,speed:"12 m",attacks:[["Morso",4,"2d4+2","perforanti; TS Forza CD 11 o cade prono"]],abilities:"Udito e olfatto affinati: vantaggio alle prove di Percezione basate su udito e olfatto. Tattiche di branco."},
+{name:"Scheletro",cr:"1/4",ac:13,hp:"2d8+4",init:2,speed:"9 m",attacks:[["Spada corta",4,"1d6+2","perforanti"],["Arco corto",4,"1d6+2","perforanti, gittata 24/96 m"]],abilities:"Vulnerabile ai danni contundenti. Immune a veleno ed esaurimento. Scurovisione 18 m."},
+{name:"Zombi",cr:"1/4",ac:8,hp:"3d8+9",init:-2,speed:"6 m",attacks:[["Schianto",3,"1d6+1","contundenti"]],abilities:"Tempra da non morto: se scende a 0 PF fa un TS Costituzione CD 5 + danni subiti; se riesce resta a 1 PF (non vale con danni radiosi o colpi critici)."},
+{name:"Orco",cr:"1/2",ac:13,hp:"2d8+6",init:1,speed:"9 m",attacks:[["Ascia bipenne",5,"1d12+3","taglienti"],["Giavellotto",5,"1d6+3","perforanti, gittata 9/36 m"]],abilities:"Aggressivo: come azione bonus si muove fino alla sua velocità verso una creatura ostile che vede."},
+{name:"Bugbear",cr:"1",ac:16,hp:"5d8+5",init:2,speed:"9 m",attacks:[["Morning star",4,"2d8+2","perforanti"],["Giavellotto",4,"2d6+2","perforanti, gittata 9/36 m"]],abilities:"Brutale: in mischia aggiunge un dado di danno dell'arma. Attacco a sorpresa: +2d6 contro una creatura sorpresa nel primo round."},
+{name:"Ragno gigante",cr:"1",ac:14,hp:"4d10+4",init:3,speed:"9 m, scalare 9 m",attacks:[["Morso",5,"1d8+3","perforanti + TS Costituzione CD 11 o 2d8 veleno"],["Ragnatela (ricarica 5–6)",5,"—","gittata 9/18 m, bersaglio intralciato (CD 12 Forza per liberarsi)"]],abilities:"Movimento del ragno, senso della ragnatela, camminare sulle ragnatele."},
+{name:"Ogre",cr:"2",ac:11,hp:"7d10+21",init:-1,speed:"12 m",attacks:[["Clava pesante",6,"2d8+4","contundenti"],["Giavellotto",6,"2d6+4","perforanti, gittata 9/36 m"]],abilities:"Scurovisione 18 m."},
+];
+const ENV={
+  Taverna:{n:["Il Drago Ubriaco","La Botte Sfondata","Il Cinghiale d'Oro","La Lanterna Storta","Il Riposo del Viandante"],v:["travi annerite dal fumo e boccali appesi","un camino enorme dove gira uno spiedo","tavoli incisi con nomi di vecchi avventurieri","una bacheca piena di avvisi di taglie"],s:["un liuto stonato e risate sguaiate","il tintinnio di dadi su un tavolo","una discussione accesa sul prezzo della birra"],o:["birra versata e pane caldo","stufato di cipolle","fumo di pipa dolciastro"],f:["una porta sul retro sempre chiusa a chiave","un ospite incappucciato che non tocca il suo boccale","una botola sotto il bancone","un trofeo di mostro sopra il camino"]},
+  Foresta:{n:["il Bosco dei Sussurri","la Selva Grigia","il Querceto Antico","la Macchia delle Lucciole"],v:["tronchi coperti di muschio e funghi luminosi","raggi di luce che filtrano tra le chiome","un sentiero quasi cancellato dalle radici"],s:["il silenzio improvviso degli uccelli","rami che scricchiolano","un ruscello nascosto"],o:["terra umida e resina","foglie marce","fiori selvatici dolciastri"],f:["un cerchio di funghi perfetto","un albero cavo con offerte votive","tracce di un grosso animale","una statua mangiata dall'edera"]},
+  Dungeon:{n:["le Sale del Re Dimenticato","la Cripta Sommersa","le Segrete di Ferronero","il Labirinto delle Ossa"],v:["pareti umide coperte di salnitro","ossa sparse in un angolo","torce spente da secoli nei loro supporti","rune graffiate sulle pietre"],s:["gocce che cadono nel buio","un grattare lontano","l'eco dei propri passi"],o:["muffa e aria stantia","olio bruciato","qualcosa di morto"],f:["una lastra del pavimento che suona vuota","una porta con un volto scolpito","una catena che pende dal soffitto","un altare macchiato"]},
+  Città:{n:["il Quartiere dei Calderai","Piazza della Fontana","il Mercato del Vicolo Stretto","il Porto Basso"],v:["bancarelle colorate e folla che spinge","guardie annoiate sotto un arco","panni stesi tra le case"],s:["banditori che urlano le offerte","campane del tempio","ruote di carri sul selciato"],o:["spezie e pesce","sterco di cavallo","pane appena sfornato"],f:["un borseggiatore che segue il gruppo","un manifesto con il volto di un PG","un predicatore che annuncia la fine del mondo","una lite tra due gilde"]},
+  Grotta:{n:["la Gola del Vento","la Caverna dei Cristalli","il Ventre della Montagna"],v:["stalattiti come denti","cristalli che riflettono la luce","un lago sotterraneo immobile"],s:["acqua che scorre sotto la roccia","battito d'ali di pipistrelli","un respiro profondo che viene dal fondo"],o:["guano e umidità","zolfo","pietra bagnata"],f:["un passaggio stretto da attraversare strisciando","pitture rupestri antiche","un nido abbandonato","una corrente d'aria che indica un'altra uscita"]},
+  Rovine:{n:["la Torre Spezzata","le Rovine di Aeloria","il Forte Caduto"],v:["colonne crollate tra l'erba alta","mosaici sbiaditi","un arco ancora in piedi da solo"],s:["vento tra le pietre","corvi","un rintocco senza campana"],o:["polvere antica","fiori di campo","cenere"],f:["un'iscrizione in una lingua morta","una scala che scende sotto terra","tracce di un accampamento recente","una statua con un occhio di gemma mancante"]},
+  Palude:{n:["la Palude dei Lamenti","il Pantano Nero","le Acque Morte"],v:["alberi contorti che escono dall'acqua","nebbia bassa","fuochi fatui in lontananza"],s:["gracidare continuo","bolle che salgono dal fango","un tonfo nell'acqua"],o:["putrefazione","acqua stagnante","erbe amare"],f:["una capanna su palafitte","un sentiero di tronchi marci","una barca affondata a metà","un idolo di legno coperto di alghe"]},
+  Montagna:{n:["il Passo dell'Aquila","la Cresta Gelata","il Picco del Gigante"],v:["neve che brilla al sole","un precipizio senza fondo","nuvole sotto i piedi"],s:["vento che ulula","massi che rotolano","il grido di un rapace"],o:["aria gelida e pulita","pino","fumo di un bivacco"],f:["un ponte di corda sfilacciato","una grotta usata come rifugio","impronte enormi nella neve","un monastero arroccato"]},
+  Tempio:{n:["il Santuario della Luce","il Tempio dei Mille Ceri","la Cappella del Pellegrino"],v:["vetrate colorate","candele a centinaia","un'enorme statua della divinità"],s:["canti sommessi","passi sul marmo","una campana che chiama alla preghiera"],o:["incenso","cera","fiori freschi sull'altare"],f:["una reliquia custodita da due guardie","un confessionale con un passaggio segreto","un sacerdote che nasconde qualcosa","offerte sparite dall'altare"]},
+  Porto:{n:["il Molo dei Gabbiani","la Darsena Vecchia","l'Approdo delle Sirene"],v:["navi alla fonda e reti stese","casse impilate","marinai che scaricano merci"],s:["gabbiani","onde contro il molo","canti di marinai"],o:["salsedine","pesce","catrame"],f:["una nave con le vele nere","un magazzino sorvegliato di notte","un contrabbandiere che cerca aiuto","una sirena scolpita che sembra seguirti con lo sguardo"]},
+  Strada:{n:["la Via del Re","la Strada dei Mercanti","il Sentiero dei Pellegrini"],v:["un carro rovesciato","una pietra miliare consumata","un pozzo ai margini"],s:["zoccoli in lontananza","un corno da caccia","grilli"],o:["polvere","erba falciata","fumo di un villaggio vicino"],f:["un posto di blocco improvvisato","un viandante ferito","tracce di un'imboscata","un santuario sul ciglio della strada"]},
+};
+const ENV_COMMON={meteo:["cielo limpido","pioggia sottile","nebbia fitta","vento forte","temporale in arrivo","caldo afoso","freddo pungente","prima neve"],ora:["all'alba","a mezzogiorno","al tramonto","nel cuore della notte","sotto la luna piena"],png:["un vecchio che sa più di quanto dice","una bambina che vende fiori","un mercenario in cerca di lavoro","un erudito smarrito","un nano che conta le monete","una sacerdotessa itinerante","un bardo che raccoglie storie","un cacciatore taciturno"],gancio:["qualcuno chiede aiuto per ritrovare una persona scomparsa","circola la voce di un tesoro nascosto qui vicino","un messaggero arriva con notizie urgenti","un oggetto del gruppo viene riconosciuto da uno sconosciuto","si sente parlare di creature avvistate di notte","un vecchio nemico è stato visto in zona"],compl:["arriva una pattuglia che fa domande","scoppia una rissa","un incendio divampa vicino","il tempo peggiora all'improvviso","un PNG mente spudoratamente","qualcuno sta seguendo il gruppo"]};
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+function genEnv(type){const t=ENV[type]||ENV[pick(Object.keys(ENV))];const c=ENV_COMMON;
+  return {name:pick(t.n),type,text:`Atmosfera: ${pick(t.v)}, ${pick(c.ora)}, ${pick(c.meteo)}.\nSi sente: ${pick(t.s)}.\nSi sente l'odore di: ${pick(t.o)}.\nDettaglio notevole: ${pick(t.f)}.\nChi c'è: ${pick(c.png)}.\nSpunto: ${pick(c.gancio)}.\nComplicazione: ${pick(c.compl)}.`}}
+
+/* ---- Strumenti del Master: bestiario, ricerca, ambienti, appunti ---- */
+const nrm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+let MONDB=null,monErr=false;
+function loadMons(){if(MONDB||loadMons.p)return;loadMons.p=fetch("monsters.json").then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{MONDB=d;refreshMonLists()}).catch(()=>{monErr=true;loadMons.p=null;refreshMonLists()})}
+function refreshMonLists(){const a=document.getElementById("mcmd-res");if(a&&UI.mq)a.innerHTML=cmdResults(UI.mq);const b=document.getElementById("mp-res");if(b)b.innerHTML=presetResults()}
+function rerenderMaster(){const y=window.scrollY;renderView();window.scrollTo(0,y)}
+const BASE_BY=Object.fromEntries(MON_BASE.map(m=>[nrm(m.name),m]));
+/* scheda mostro uniforme: {name,cr,type,ac,hp,init,speed,ab,attacks:[{name,bonus,dmg,type}],abilities,src} */
+function monFromSrd(o){const b=BASE_BY[nrm(o.n)];
+  const extra=[...o.sa.map(([n,x])=>`${n}: ${x}`),...o.act.map(([n,x])=>`${n}: ${x}`),...(o.leg||[]).map(([n,x])=>`Leggendaria – ${n}: ${x}`)].join("\n");
+  return{name:o.n,cr:o.cr,type:o.t,ac:o.ac,hp:o.hp,init:o.ini,speed:o.sp,ab:o.ab,src:o.i,
+    attacks:(b?b.attacks:o.atk).map(([n,bo,d,t])=>({name:n,bonus:bo,dmg:d,type:t})),abilities:b&&b.abilities?b.abilities+(o.act.length||o.leg.length?"\n"+[...o.act,...(o.leg||[])].map(([n,x])=>`${n}: ${x}`).join("\n"):""):extra}}
+function monFromBase(m){return{name:m.name,cr:m.cr,type:"",ac:m.ac,hp:m.hp,init:m.init,speed:m.speed,ab:null,src:"",attacks:m.attacks.map(([n,bo,d,t])=>({name:n,bonus:bo,dmg:d,type:t})),abilities:m.abilities}}
+function presetList(){return MONDB?MONDB.map(o=>({key:"s:"+o.i,o,name:o.n,en:o.en,cr:o.cr,t:o.t,ac:o.ac,hp:o.hp,hpa:o.hpa})):MON_BASE.map((m,i)=>({key:"b:"+i,name:m.name,cr:m.cr,t:"",ac:m.ac,hp:m.hp}))}
+function presetGet(key){if(key.startsWith("s:")){const o=MONDB&&MONDB.find(x=>x.i===key.slice(2));return o?monFromSrd(o):null}const m=MON_BASE[Number(key.slice(2))];return m?monFromBase(m):null}
+function mon4entry(e){const B=(camp().master||{bestiary:[]}).bestiary;if(e.monId){const t=B.find(x=>x.id===e.monId);if(t)return t}if(e.srd&&MONDB){const o=MONDB.find(x=>x.i===e.srd);if(o)return monFromSrd(o)}if(e.base){const m=MON_BASE.find(x=>x.name===e.base);if(m)return monFromBase(m)}return null}
+function crNum(cr){if(!cr)return 0;if(String(cr).includes("/")){const[a,b]=String(cr).split("/");return a/b}return Number(cr)||0}
+function addMonsters(t,n,ref){const k=camp();n=clamp(n||1,1,30);const same=k.combat.list.filter(e=>e.name.replace(/ \d+$/,"")===t.name).length;
+  for(let i=1;i<=n;i++){const hr=/^\d+$/.test(String(t.hp).trim())?Number(t.hp):(parseRoll(t.hp)||{total:Number(t.hpa)||1}).total;const r=rnd(20),ini=r+(Number(t.init)||0);
+    k.combat.list.push({id:uid(),charId:null,name:n>1||same?`${t.name} ${same+i}`:t.name,init:ini,hp:Math.max(1,hr),max:Math.max(1,hr),ac:t.ac,note:"",...ref})}
+  sortCombat();toast(`${n>1?n+" × ":""}${esc(t.name)} in combattimento (iniziativa tirata).`)}
+function monStatLine(t){return [t.cr!==""&&t.cr!=null?`GS ${esc(t.cr)}`:"",`CA ${esc(t.ac)}`,`PF ${esc(t.hp)}`,`Iniz. ${sgn(Number(t.init)||0)}`,t.speed?esc(t.speed):""].filter(Boolean).join(" · ")}
+function monCard(t){const ab=t.ab?`<div class="msaves">${AB.map((a,i)=>`<span>${a}<br><b>${t.ab[i]}</b> <small>(${sgn(Math.floor((t.ab[i]-10)/2))})</small></span>`).join("")}</div>`:"";
+  return `<div class="muted" style="font-size:.85rem">${esc(t.type||"")}</div><div>${monStatLine(t)}</div>${ab}
+    ${t.attacks.length?`<div><span class="lbl">Attacchi</span><div class="list">${t.attacks.map(a=>`<div class="matk-l"><b>${esc(a.name)}</b> ${sgn(Number(a.bonus)||0)} al colpire · ${esc(a.dmg)} ${esc(a.type||"")}</div>`).join("")}</div></div>`:""}
+    ${t.abilities?`<div><span class="lbl">Abilità e azioni</span><div class="mtext">${esc(t.abilities)}</div></div>`:""}${t.notes?`<div><span class="lbl">Note</span><div class="mtext">${esc(t.notes)}</div></div>`:""}`}
+function monAttack(e,a){const mode=UI.diceMode;const x=rnd(20),y=rnd(20);const d=mode==="adv"?Math.max(x,y):mode==="dis"?Math.min(x,y):x;const bonus=Number(a.bonus)||0;const tot=d+bonus;const crit=d===20,fum=d===1;
+  const expr=crit?String(a.dmg).replace(/(\d*)d(\d+)/g,(m,n,f)=>`${Number(n||1)*2}d${f}`):a.dmg;const dm=parseRoll(expr);
+  const who=`${e.name}: ${a.name}`;const pair=mode==="norm"?`${x}`:`${x}, ${y} → ${d}`;
+  pushHist(who+" (colpire)",tot,`d20[${pair}] ${sgn(bonus)}`);if(dm)pushHist(who+(crit?" (danni, critico)":" (danni)"),dm.total,dm.detail);
+  toast(`<div>${esc(who)}${mode!=="norm"?mode==="adv"?" (vantaggio)":" (svantaggio)":""}</div><div class="row" style="justify-content:center;gap:18px"><div><small>Colpire</small><div class="big ${crit?"crit":fum?"fumble":""}">${tot}</div></div>${dm?`<div><small>Danni</small><div class="big">${dm.total}</div></div>`:""}</div><div style="font-size:.8rem;opacity:.8">d20 [${pair}] ${sgn(bonus)}${dm?` · ${esc(dm.detail)} ${esc(a.type||"")}`:""}${crit?" · <b class=crit>Critico! Dadi raddoppiati</b>":fum?" · <b class=fumble>1 naturale</b>":""}</div>`,5000);
+  if(mode!=="norm"){UI.diceMode="norm";if(UI.drawer)renderDrawer()}}
+function monPanel(e){const t=mon4entry(e);if(!t)return "";
+  return `<div class="matk">${t.attacks.map((a,i)=>`<button class="btn sm" data-a="mon-atk" data-e="${e.id}" data-i="${i}" title="${esc(a.dmg+" "+(a.type||""))}">⚔ ${esc(a.name)} ${sgn(Number(a.bonus)||0)}</button>`).join("")}<button class="btn sm ghost" data-a="mon-info" data-e="${e.id}">📖 Scheda</button></div>`}
+
+/* ricerca rapida */
+function cmdResults(q){q=q.trim();
+  if(q.length<2)return `<div class="muted mhint">Scrivi una parola (es. <i>lottare</i>, <i>prono</i>, <i>palla di fuoco</i>, <i>goblin</i>) oppure una formula di dadi come <i>3d6+2</i>.</div>`;
+  const out=[];
+  if(/^[+-]?\d*d\d+([+-](\d*d)?\d+)*$/i.test(q.replace(/\s+/g,""))&&parseRoll(q))out.push(`<button class="btn pri sm" data-a="mcmd-roll">🎲 Tira ${esc(q)}</button>`);
+  const words=nrm(q).split(/\s+/).filter(Boolean);const has=s=>{const n=nrm(s);return words.every(w=>n.includes(w))};
+  const rules=RULES.map(r=>({r,s:has(r.t)?3:has(r.t+" "+r.k)?2:has(r.t+" "+r.k+" "+r.x)?1:0})).filter(x=>x.s).sort((a,b)=>b.s-a.s).slice(0,6);
+  if(rules.length)out.push(`<div class="mres"><span class="lbl">Regole</span>${rules.map(({r})=>`<details class="it"><summary><span class="t">📜 ${esc(r.t)}</span></summary><div class="body mtext">${esc(r.x)}</div></details>`).join("")}</div>`);
+  if(!SPELLDB)loadSpells();else{const sp=SPELLDB.filter(o=>has(o.n+" "+(o.en||""))).slice(0,5);
+    if(sp.length)out.push(`<div class="mres"><span class="lbl">Incantesimi</span>${sp.map(o=>{const v=dbView(o);return `<details class="it"><summary><span class="t">🔮 ${esc(v.name)} <small class="muted">${v.level?v.level+"° liv.":"trucchetto"} · ${esc(v.school)}</small></span></summary><div class="body"><div class="muted" style="font-size:.82rem">${esc([v.time,v.range,v.comp,v.duration+(v.conc?" (concentrazione)":"")].join(" · "))}</div><div class="mtext">${esc(v.desc)}</div>${v.higher?`<div class="mtext"><b>Ai livelli superiori.</b> ${esc(v.higher)}</div>`:""}</div></details>`}).join("")}</div>`)}
+  if(!MONDB)loadMons();
+  const mons=presetList().filter(p=>has(p.name+" "+(p.en||""))).slice(0,6);
+  const best=camp().master.bestiary.filter(t=>has(t.name)).slice(0,4);
+  if(mons.length||best.length)out.push(`<div class="mres"><span class="lbl">Mostri</span>${best.map(t=>monRow(t.name,"Il mio bestiario · "+monStatLine(t),`data-a="mb-add" data-id="${t.id}"`,`data-a="mb-info" data-id="${t.id}"`)).join("")}${mons.map(p=>monRow(p.name,monStatLine({cr:p.cr,ac:p.ac,hp:p.hp,init:(p.o||{}).ini??(MON_BASE[Number(p.key.slice(2))]||{}).init})+(p.t?" · "+esc(p.t):""),`data-a="mp-add" data-k="${p.key}"`,`data-a="mp-info" data-k="${p.key}"`)).join("")}</div>`);
+  const notes=camp().master.notes.filter(n=>has(n.title+" "+n.text)).slice(0,3);
+  if(notes.length)out.push(`<div class="mres"><span class="lbl">I tuoi appunti</span>${notes.map(n=>{const i=nrm(n.text).indexOf(words[0]);const sn=i<0?n.text.slice(0,140):(i>50?"…":"")+n.text.slice(Math.max(0,i-50),i+110)+"…";return `<button class="mrow" data-a="note-go" data-id="${n.id}"><b>📝 ${esc(n.title||"Senza titolo")}</b><small class="muted">${esc(sn)}</small></button>`}).join("")}</div>`);
+  return out.join("")||`<div class="muted mhint">Nessun risultato per «${esc(q)}».</div>`}
+function monRow(name,sub,addAttrs,infoAttrs){return `<div class="mrow2"><button class="mrow" ${infoAttrs}><b>👹 ${esc(name)}</b><small class="muted">${sub}</small></button><button class="btn sm" ${addAttrs} title="Aggiungi al combattimento">+ ⚔</button></div>`}
+document.addEventListener("input",e=>{if(e.target.id==="mcmd"){UI.mq=e.target.value;const r=$("#mcmd-res");if(r)r.innerHTML=cmdResults(UI.mq)}else if(e.target.id==="mp-q"){UI.mpq=e.target.value;const r=$("#mp-res");if(r)r.innerHTML=presetResults()}});
+document.addEventListener("submit",e=>{if(e.target.id==="mcmd-form"){e.preventDefault();const q=($("#mcmd").value||"").trim();if(parseRoll(q)&&/d/i.test(q))roll(q,q)}});
+
+/* incontro: preset + bestiario */
+function presetResults(){if(!MONDB&&!monErr)loadMons();const q=nrm(UI.mpq||"");const cr=UI.mpcr||"";
+  let L=presetList().filter(p=>(!q||nrm(p.name+" "+(p.en||"")).includes(q))&&(!cr||(cr==="h"?crNum(p.cr)>=5:Math.abs(crNum(p.cr)-Number(cr))<.01||(cr==="2-4"&&crNum(p.cr)>=2&&crNum(p.cr)<=4))));
+  const tot=L.length;L=L.slice(0,40);
+  return (L.map(p=>`<div class="mrow2"><button class="mrow" data-a="mp-info" data-k="${p.key}"><b>${esc(p.name)}</b><small class="muted">GS ${esc(p.cr)} · CA ${p.ac} · PF ${esc(p.hp)}${p.t?" · "+esc(p.t):""}</small></button><button class="btn sm" data-a="mp-save" data-k="${p.key}" title="Salva nel mio bestiario">☆</button><button class="btn sm" data-a="mp-add" data-k="${p.key}" title="Aggiungi al combattimento">+ ⚔</button></div>`).join("")||`<div class="empty">Nessun mostro trovato.</div>`)+(tot>40?`<div class="muted mhint">Altri ${tot-40}: affina la ricerca.</div>`:"")+(!MONDB?`<div class="muted mhint">${monErr?"Elenco completo non disponibile offline: mostro i preset base.":"Carico 334 mostri…"}</div>`:"")}
+function vEncounter(){const k=camp();const B=k.master.bestiary;
+  const crs=[["","Tutti i GS"],["0","GS 0"],["0.125","GS 1/8"],["0.25","GS 1/4"],["0.5","GS 1/2"],["1","GS 1"],["2-4","GS 2–4"],["h","GS 5+"]];
+  return vCombat(true)+`<section class="card"><div class="card-h"><h2>Il mio bestiario</h2><button class="btn sm" data-a="mb-new">+ Nuovo mostro</button></div>
+    <p class="muted" style="margin:0;font-size:.85rem">Prepara qui i nemici della prossima sessione: attacchi, abilità e note restano salvati su questo dispositivo e non li vedono i giocatori.</p>
+    <div class="list" id="list-best">${B.map(t=>`<details class="it" data-id="mb-${t.id}" data-s="${esc(nrm(t.name))}" ${isOpen("mb-"+t.id)}><summary><span class="t tt"><span>👹 ${esc(t.name||"Senza nome")}</span><small class="muted" style="font-weight:400">${monStatLine(t)}</small></span>
+        <span class="row sum-act" style="gap:4px"><input type="number" inputmode="numeric" id="bn-${t.id}" value="1" min="1" style="width:52px;padding:4px" aria-label="Quanti"><button class="btn pri sm" data-a="mb-add" data-id="${t.id}">+ ⚔</button></span></summary>
+      <div class="body"><div class="fields">${fld("Nome",inp(`k.master.bestiary#${t.id}.name`))}${fld("GS",inp(`k.master.bestiary#${t.id}.cr`,{type:"text"}))}${fld("CA",inp(`k.master.bestiary#${t.id}.ac`,{type:"number"}))}${fld("PF (o formula)",inp(`k.master.bestiary#${t.id}.hp`,{type:"text"}))}${fld("Bonus iniziativa",inp(`k.master.bestiary#${t.id}.init`,{type:"number"}))}${fld("Velocità",inp(`k.master.bestiary#${t.id}.speed`,{type:"text"}))}</div>
+        <div><span class="lbl">Attacchi</span><div class="list">${t.attacks.map(a=>`<div class="matk-e">${inp(`k.master.bestiary#${t.id}.attacks#${a.id}.name`,{ph:"Nome attacco",attrs:'aria-label="Nome attacco"'})}${inp(`k.master.bestiary#${t.id}.attacks#${a.id}.bonus`,{type:"number",attrs:'aria-label="Bonus al colpire" title="Bonus al colpire"'})}${inp(`k.master.bestiary#${t.id}.attacks#${a.id}.dmg`,{ph:"1d6+2",attrs:'aria-label="Danni"'})}${inp(`k.master.bestiary#${t.id}.attacks#${a.id}.type`,{ph:"tipo / note",attrs:'aria-label="Tipo di danno"'})}<button class="btn sm ghost" data-a="mb-atk-del" data-id="${t.id}" data-x="${a.id}" aria-label="Rimuovi attacco">✕</button></div>`).join("")}</div>
+          <div><button class="btn sm" data-a="mb-atk-add" data-id="${t.id}">+ Attacco</button></div></div>
+        ${fld("Abilità, azioni speciali, resistenze",ta(`k.master.bestiary#${t.id}.abilities`,"Es. Fuga agile: Disimpegno o Nascondersi come azione bonus",4))}
+        ${fld("Note per la sessione",ta(`k.master.bestiary#${t.id}.notes`,"Tattiche, dove si trova, bottino…",2))}
+        <div class="row"><button class="btn sm" data-a="mb-dup" data-id="${t.id}">Duplica</button><button class="btn sm danger" data-a="mb-del" data-id="${t.id}">Elimina</button></div></div></details>`).join("")||`<div class="empty">Nessun mostro salvato. Creane uno o salvane uno dai preset qui sotto con ☆.</div>`}</div></section>
+  <section class="card"><h2>Preset di mostri</h2>
+    <p class="muted" style="margin:0;font-size:.85rem">334 mostri del manuale base (SRD 5.1). Tocca un nome per la scheda, ☆ per salvarlo nel bestiario e personalizzarlo, + ⚔ per metterlo subito in combattimento.</p>
+    <div class="row"><input id="mp-q" placeholder="Cerca: goblin, drago, scheletro…" value="${esc(UI.mpq||"")}" style="flex:1 1 180px" autocomplete="off"><select id="mp-cr" aria-label="Grado di sfida">${crs.map(([v,l])=>`<option value="${v}" ${(UI.mpcr||"")===v?"selected":""}>${l}</option>`).join("")}</select></div>
+    <div class="list" id="mp-res">${presetResults()}</div>
+    <p class="muted" style="margin:0;font-size:.72rem">Dati dei mostri da System Reference Document 5.1, Wizards of the Coast, licenza CC-BY-4.0. Nomi e attacchi tradotti; i testi delle abilità speciali sono ancora in inglese.</p></section>`}
+document.addEventListener("change",e=>{if(e.target.id==="mp-cr"){UI.mpcr=e.target.value;const r=$("#mp-res");if(r)r.innerHTML=presetResults()}});
+
+/* ambienti */
+function vEnvs(){const k=camp();const E=k.master.envs;const d=UI.envDraft;
+  return `<section class="card"><h2>Genera un ambiente</h2>
+    <p class="muted" style="margin:0;font-size:.85rem">Un luogo pronto da descrivere: atmosfera, suoni, odori, un dettaglio, chi c'è, uno spunto e una complicazione.</p>
+    <div class="row"><select id="env-type" aria-label="Tipo di luogo"><option value="">Qualsiasi luogo</option>${Object.keys(ENV).map(t=>`<option ${UI.envType===t?"selected":""}>${t}</option>`).join("")}</select><button class="btn pri sm" data-a="env-gen">🎲 Genera</button><button class="btn sm" data-a="env-new">+ Scrivi a mano</button></div>
+    ${d?`<div class="envd"><h3>${esc(d.name)} <small class="muted">· ${esc(d.type)}</small></h3><div class="mtext">${esc(d.text)}</div><div class="row"><button class="btn pri sm" data-a="env-save">Salva</button><button class="btn sm" data-a="env-gen">Rigenera</button></div></div>`:""}</section>
+  <section class="card"><div class="card-h"><h2>Ambienti salvati</h2><span class="tag">${E.length}</span></div>
+    ${E.length>3?`<input data-a="filter" data-l="envs" placeholder="Filtra…">`:""}
+    <div class="list" id="list-envs">${E.map(x=>`<details class="it" data-id="env-${x.id}" data-s="${esc(nrm(x.name+" "+x.type+" "+x.text))}" ${isOpen("env-"+x.id)}><summary><span class="t tt"><span>🏞️ ${esc(x.name||"Senza nome")}</span><small class="muted" style="font-weight:400">${esc(x.type||"")}</small></span></summary>
+      <div class="body"><div class="fields">${fld("Nome",inp(`k.master.envs#${x.id}.name`))}${fld("Tipo",inp(`k.master.envs#${x.id}.type`,{type:"text"}))}</div>${ta(`k.master.envs#${x.id}.text`,"Descrizione, dettagli, PNG, segreti…",8)}
+      <div class="row"><button class="btn sm danger" data-a="env-del" data-id="${x.id}">Elimina</button></div></div></details>`).join("")||`<div class="empty">Nessun ambiente salvato.</div>`}</div></section>`}
+document.addEventListener("change",e=>{if(e.target.id==="env-type")UI.envType=e.target.value});
+
+/* appunti di sessione */
+function vNotes(){const N=camp().master.notes;
+  return `<section class="card"><div class="card-h"><h2>Appunti della campagna</h2><div class="row"><button class="btn pri sm" data-a="note-new">+ Nuovo appunto</button><button class="btn sm" data-a="note-file">📄 Carica testo</button></div></div>
+    <p class="muted" style="margin:0;font-size:.85rem">Prepara la sessione: trama, segreti, PNG, incontri. Puoi caricare file .txt o .md (anche più di uno) e cercarli dalla barra in alto. Restano su questo dispositivo.</p>
+    ${N.length>3?`<input data-a="filter" data-l="notes" placeholder="Filtra gli appunti…">`:""}
+    <div class="list" id="list-notes">${N.map(n=>`<details class="it" data-id="note-${n.id}" id="note-${n.id}" data-s="${esc(nrm(n.title+" "+n.text))}" ${isOpen("note-"+n.id)}><summary><span class="t tt"><span>📝 ${esc(n.title||"Senza titolo")}</span><small class="muted" style="font-weight:400">${n.text?esc(n.text.length)+" caratteri · ":""}${new Date(n.updatedAt||Date.now()).toLocaleDateString("it-IT")}</small></span></summary>
+      <div class="body">${fld("Titolo",inp(`k.master.notes#${n.id}.title`))}${ta(`k.master.notes#${n.id}.text`,"Scrivi qui…",14)}
+      <div class="row"><button class="btn sm" data-a="note-dl" data-id="${n.id}">Scarica .txt</button><button class="btn sm danger" data-a="note-del" data-id="${n.id}">Elimina</button></div></div></details>`).join("")||`<div class="empty">Nessun appunto. Scrivine uno o carica un file di testo.</div>`}</div>
+    <input type="file" id="file-notes" accept=".txt,.md,.markdown,text/plain,text/markdown" multiple hidden></section>`}
+document.addEventListener("change",async e=>{if(e.target.id!=="file-notes")return;const fs=[...e.target.files];e.target.value="";let n=0;
+  for(const f of fs){if(f.size>2e6){toast(`${esc(f.name)} è troppo grande (max 2 MB).`);continue}try{const text=await f.text();const id=uid();const h=(text.match(/^\s*#{1,3}\s+(.+)$/m)||[])[1];camp().master.notes.unshift({id,title:(h||f.name.replace(/\.(txt|md|markdown)$/i,"")).trim().slice(0,80),text,updatedAt:Date.now()});UI.open.add("note-"+id);n++}catch(err){}}
+  if(n){touch();render();toast(`${n} file caricat${n>1?"i":"o"} negli appunti.`)}});
+document.addEventListener("input",e=>{const p=e.target.dataset&&e.target.dataset.b;if(p&&p.startsWith("k.master.notes#")){const n=getv(p.replace(/\.(text|title)$/,".updatedAt"));if(n!==undefined)setv(p.replace(/\.(text|title)$/,".updatedAt"),Date.now())}});
+
+const MTABS=[["gruppo","🛡️","Gruppo"],["incontro","⚔️","Incontro"],["ambienti","🏞️","Ambienti"],["appunti","📝","Appunti"]];
+function vMaster(){const t=UI.mtab||"gruppo";const k=camp();if(!k.master)k.master={bestiary:[],envs:[],notes:[]};
+  return `<section class="card mcmd"><form id="mcmd-form" role="search"><input id="mcmd" type="search" placeholder="🔎 Cerca regole, incantesimi, mostri, appunti… o tira 3d6+2" value="${esc(UI.mq||"")}" autocomplete="off" enterkeyhint="search"></form><div id="mcmd-res">${UI.mq?cmdResults(UI.mq):""}</div></section>
+  <nav class="mnav" aria-label="Sezioni del Master">${MTABS.map(([id,ic,l])=>`<button class="${t===id?"on":""}" data-a="mtab" data-v="${id}" aria-current="${t===id}"><span aria-hidden="true">${ic}</span> ${l}</button>`).join("")}</nav>
+  ${({gruppo:vParty,incontro:vEncounter,ambienti:vEnvs,appunti:vNotes}[t]||vParty)()}`}
+document.addEventListener("focusin",e=>{if(e.target.id==="mcmd"&&!UI.mq){const r=$("#mcmd-res");if(r)r.innerHTML=cmdResults("")}});
+
+const MA={
+  mtab:b=>{UI.mtab=b.dataset.v;window.scrollTo({top:0})},
+  "mcmd-roll":()=>{const q=$("#mcmd").value.trim();roll(q,q);return "noRender"},
+  "mp-info":b=>{const t=presetGet(b.dataset.k);if(!t)return "noRender";modal(`<h2>${esc(t.name)}</h2>${monCard(t)}<div class="row"><input type="number" inputmode="numeric" id="mi-n" value="1" min="1" style="width:60px" aria-label="Quanti"><button class="btn pri" data-a="mp-add" data-k="${b.dataset.k}">Aggiungi al combattimento</button><button class="btn" data-a="mp-save" data-k="${b.dataset.k}">☆ Salva nel bestiario</button><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
+  "mb-info":b=>{const t=camp().master.bestiary.find(x=>x.id===b.dataset.id);if(!t)return "noRender";modal(`<h2>${esc(t.name)}</h2>${monCard(t)}<div class="row"><input type="number" inputmode="numeric" id="mi-n" value="1" min="1" style="width:60px" aria-label="Quanti"><button class="btn pri" data-a="mb-add" data-id="${t.id}">Aggiungi al combattimento</button><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
+  "mon-info":b=>{const e=camp().combat.list.find(x=>x.id===b.dataset.e);const t=e&&mon4entry(e);if(!t)return "noRender";modal(`<h2>${esc(e.name)}</h2>${monCard(t)}<div><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
+  "mp-add":b=>{const t=presetGet(b.dataset.k);if(!t)return "noRender";const n=$("#mi-n")?numIn("#mi-n"):1;closeModal();addMonsters(t,n,b.dataset.k.startsWith("s:")?{srd:t.src}:{base:t.name})},
+  "mb-add":b=>{const t=camp().master.bestiary.find(x=>x.id===b.dataset.id);if(!t)return "noRender";const n=$("#mi-n")?numIn("#mi-n"):$("#bn-"+t.id)?numIn("#bn-"+t.id):1;closeModal();addMonsters(t,n,{monId:t.id})},
+  "mp-save":b=>{const t=presetGet(b.dataset.k);if(!t)return "noRender";const id=uid();camp().master.bestiary.unshift({id,name:t.name,cr:t.cr,type:t.type,ac:t.ac,hp:t.hp,init:t.init,speed:t.speed,ab:t.ab,src:t.src,attacks:t.attacks.map(a=>({id:uid(),...a})),abilities:t.abilities||"",notes:""});closeModal();UI.open.add("mb-"+id);toast(`${esc(t.name)} salvato nel tuo bestiario: ora puoi modificarlo.`);if(UI.mtab!=="incontro"){UI.mtab="incontro"}},
+  "mb-new":()=>{const id=uid();camp().master.bestiary.unshift({id,name:"Nuovo mostro",cr:"",type:"",ac:12,hp:"2d8",init:0,speed:"9 m",ab:null,src:"",attacks:[{id:uid(),name:"Attacco",bonus:3,dmg:"1d6+1",type:""}],abilities:"",notes:""});UI.open.add("mb-"+id);setTimeout(()=>{const el=$("#"+fid(`k.master.bestiary#${id}.name`));if(el){el.focus();el.select()}},60)},
+  "mb-dup":b=>{const B=camp().master.bestiary;const t=B.find(x=>x.id===b.dataset.id);const c=JSON.parse(JSON.stringify(t));c.id=uid();c.name+=" (copia)";c.attacks.forEach(a=>a.id=uid());B.splice(B.indexOf(t)+1,0,c);UI.open.add("mb-"+c.id)},
+  "mb-del":b=>{const B=camp().master.bestiary;const t=B.find(x=>x.id===b.dataset.id);confirmBox(`Eliminare ${esc(t.name)} dal bestiario?`,"Elimina",()=>{camp().master.bestiary=B.filter(x=>x!==t)});return "noRender"},
+  "mb-atk-add":b=>{const t=camp().master.bestiary.find(x=>x.id===b.dataset.id);t.attacks.push({id:uid(),name:"",bonus:0,dmg:"",type:""})},
+  "mb-atk-del":b=>{const t=camp().master.bestiary.find(x=>x.id===b.dataset.id);t.attacks=t.attacks.filter(a=>a.id!==b.dataset.x)},
+  "mon-atk":b=>{const e=camp().combat.list.find(x=>x.id===b.dataset.e);const t=e&&mon4entry(e);const a=t&&t.attacks[Number(b.dataset.i)];if(a)monAttack(e,a);return "noRender"},
+  "env-gen":()=>{const s=$("#env-type");UI.envType=s?s.value:UI.envType;const ty=UI.envType||pick(Object.keys(ENV));UI.envDraft=genEnv(ty);UI.envDraft.type=ty;return rerenderMaster(),"noRender"},
+  "env-save":()=>{const d=UI.envDraft;if(!d)return "noRender";camp().master.envs.unshift({id:uid(),...d,created:Date.now()});UI.envDraft=null;toast("Ambiente salvato.")},
+  "env-new":()=>{const id=uid();camp().master.envs.unshift({id,name:"Nuovo luogo",type:"",text:"",created:Date.now()});UI.open.add("env-"+id)},
+  "env-del":b=>{const id=b.dataset.id;confirmBox("Eliminare questo ambiente?","Elimina",()=>{const m=camp().master;m.envs=m.envs.filter(x=>x.id!==id)});return "noRender"},
+  "note-new":()=>{const id=uid();camp().master.notes.unshift({id,title:"Sessione "+new Date().toLocaleDateString("it-IT"),text:"",updatedAt:Date.now()});UI.open.add("note-"+id);setTimeout(()=>{const el=$("#"+fid(`k.master.notes#${id}.text`));if(el)el.focus()},60)},
+  "note-file":()=>{$("#file-notes").click();return "noRender"},
+  "note-del":b=>{const id=b.dataset.id;confirmBox("Eliminare questo appunto?","Elimina",()=>{const m=camp().master;m.notes=m.notes.filter(x=>x.id!==id)});return "noRender"},
+  "note-dl":b=>{const n=camp().master.notes.find(x=>x.id===b.dataset.id);const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([n.text],{type:"text/plain"}));a.download=(n.title||"appunti").replace(/[\\/:*?"<>|]/g,"_")+".txt";document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);return "noRender"},
+  "note-go":b=>{UI.mtab="appunti";UI.open.add("note-"+b.dataset.id);UI.mq="";setTimeout(()=>{const d=$("#note-"+b.dataset.id);if(d)d.scrollIntoView({block:"start",behavior:"smooth"})},60)},
+};
+document.addEventListener("click",e=>{if(e.target.closest(".sum-act"))e.preventDefault()});
 
 /* ---- Missioni ---- */
 function vQuest(){
@@ -1426,6 +1674,7 @@ function importChars(list){
   toast([added.length?`<div>Aggiunt${added.length>1?"i":"o"}: <b>${esc(added.join(", "))}</b></div>`:"",updated.length?`<div>Aggiornat${updated.length>1?"i":"o"}: <b>${esc(updated.join(", "))}</b></div>`:""].join(""),4500);
 }
 const isCharFile=d=>d&&d.kind==="char"&&d.char&&typeof d.char==="object"&&d.char.id&&d.char.hp&&d.char.ab;
+Object.assign(A,MA);
 $("#file-char").addEventListener("change",async e=>{
   const files=[...e.target.files];e.target.value="";if(!files.length)return;const ok=[];let bad=0;
   for(const f of files){try{const d=JSON.parse(await f.text());if(isCharFile(d))ok.push(d.char);else if(d&&Array.isArray(d.campaigns))d.campaigns.forEach(k=>(k.chars||[]).forEach(c=>c&&c.id&&c.hp&&ok.push(c)));else bad++}catch(err){bad++}}
