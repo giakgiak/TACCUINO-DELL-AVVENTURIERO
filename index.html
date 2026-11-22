@@ -234,6 +234,8 @@ body.no-nav .tabs,body.no-nav .bnav{display:none!important}
 .lib-b{display:grid;gap:2px;justify-items:start;text-align:left;padding:12px 14px;border:1px solid var(--gold);border-radius:12px;background:var(--sunk);color:inherit;font:inherit;cursor:pointer}
 .lib-b span{font-size:1.6rem;line-height:1}.lib-b b{font-family:var(--f-head,inherit)}.lib-b small{color:var(--muted)}
 .lib-b:hover{border-color:var(--accent)}
+.codebox{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 10px;border:1px dashed var(--gold);border-radius:10px;background:var(--sunk)}
+.codebox b{font-size:1.05rem;letter-spacing:.05em;user-select:all;flex:1 1 auto}.codebox.off{border-style:solid;border-color:var(--line)}.codebox.off span{flex:1 1 160px}
 .mcmd{position:relative}
 .mcmd input{width:100%;font-size:1rem;padding:10px 12px;border:1.5px solid var(--gold);border-radius:10px;background:var(--paper,var(--surface))}
 #mcmd-res{display:grid;gap:10px}#mcmd-res:empty{display:none}
@@ -604,6 +606,9 @@ async function shareCamp(){
     delete k.__demo;k.share={code:newCode()};touch();schedulePush();listen(k.share.code)}
   showShare(k);
 }
+function codeBox(k){if(!fbEnabled())return "";const sh=shareCode(k);
+  if(!sh)return `<div class="codebox off"><span class="muted">Vuoi giocare insieme da più telefoni?</span><button class="btn sm pri" data-a="home-share" data-k="${k.id}">🔗 Condividi e ottieni il codice</button></div>`;
+  return `<div class="codebox"><span class="lbl">Codice campagna</span><b class="num">${esc(sh)}</b><span class="row" style="gap:4px"><button class="btn sm" data-a="copy-code" data-k="${k.id}">Copia</button><button class="btn sm pri" data-a="home-share" data-k="${k.id}">Invita</button></span></div>`}
 function shareLink(code){return location.origin+location.pathname+"?c="+code.replace(/-/g,"")}
 function showShare(k){const code=k.share.code;
   modal(`<h2>Campagna condivisa</h2><div class="share-box" style="display:grid;gap:10px">
@@ -1034,7 +1039,7 @@ function vHome(){
         <span class="epic-arrow" aria-hidden="true">⚔</span>
       </button>
       ${list?`<div class="hm-grid">${list}</div>`:`<div class="empty">Nessun personaggio ancora.</div>`}
-      <div class="row"><button class="btn sm" data-a="home-newchar" data-k="${k.id}">+ Personaggio</button>${fbEnabled()?`<button class="btn sm ghost" data-a="home-share" data-k="${k.id}">${sh?"Codice":"Condividi online"}</button>`:""}</div>
+      <div class="row"><button class="btn sm" data-a="home-newchar" data-k="${k.id}">+ Personaggio</button></div>${codeBox(k)}
     </section>`};
   return `<section class="card"><h2 style="margin:0">Benvenuto, avventuriero</h2>
       <p class="muted" style="margin:0">Scegli il personaggio con cui giocare, oppure apri la campagna come Master.</p>
@@ -1074,7 +1079,7 @@ function vParty(){
     </div>`}).join("");
   return `<section class="card">
     <div class="card-h"><h2>Tavolo del Master</h2><div class="row"><button class="btn pri sm" data-a="ms-import">Importa schede giocatori</button><button class="btn sm" data-a="cmb-party" ${L.length?"":"disabled"}>Tira iniziativa per tutti</button></div></div>
-    <p class="muted" style="margin:0;font-size:.85rem">Ogni giocatore apre il Taccuino sul suo telefono e usa <b>☰ → Invia scheda al Master</b>. Tu importi il file qui: se la scheda c'è già viene aggiornata. Per avere i dati aggiornati, fatti rimandare la scheda.</p>
+    ${codeBox(k)}<p class="muted" style="margin:0;font-size:.85rem">Ogni giocatore apre il Taccuino sul suo telefono e usa <b>☰ → Invia scheda al Master</b>. Tu importi il file qui: se la scheda c'è già viene aggiornata. Per avere i dati aggiornati, fatti rimandare la scheda.</p>
     ${L.length?`<div class="mgrid">${cards}</div>`:`<div class="empty">Nessun personaggio in questa campagna. Importa le schede dei giocatori.</div>`}
   </section>`;
 }
@@ -1500,6 +1505,7 @@ const A={
   "ms-import":()=>{$("#file-char").click();return "noRender"},
   "send-char":()=>{sendChar();return "noRender"},
   "share-camp":()=>{shareCamp();return "noRender"},
+  "copy-code":b=>{const k=S.campaigns.find(x=>x.id===b.dataset.k);const c=shareCode(k);if(!c)return "noRender";(navigator.clipboard?navigator.clipboard.writeText(c):Promise.reject()).then(()=>toast(`Codice copiato: <b>${esc(c)}</b>`),()=>toast(`Codice: <b>${esc(c)}</b>`));return "noRender"},
   "join":()=>{modal(`<h2>Entra in una campagna</h2><p style="margin:0">Inserisci il codice che ti ha dato il Master (o chi ha creato la campagna).</p><input id="join-code" placeholder="ABCD-EFGH-JKLM-NPQR" autocapitalize="characters" autocomplete="off"><div class="row"><button class="btn pri" data-a="join-ok">Entra</button><button class="btn ghost" data-a="modal-close">Annulla</button></div>`);return "noRender"},
   "join-ok":()=>{joinCode($("#join-code").value);return "noRender"},
   "share-copy":()=>{const k=camp();const t=shareLink(k.share.code);(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast("Link copiato."),()=>toast("Copia il link dal campo qui sopra."));return "noRender"},
