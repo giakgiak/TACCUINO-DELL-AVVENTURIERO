@@ -183,6 +183,30 @@ details.it>summary .t.tt{display:grid;gap:1px;white-space:normal}
 .hm-n{font-weight:700;font-size:1rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hm-s{font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hm-camp.cur{border-color:var(--accent)}
+/* cornici di classe */
+.hm-char.cls{position:relative;border:2px solid var(--cc);padding:12px 14px 12px;padding-right:52px;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--cc) 18%,var(--surface)),var(--surface) 55%,color-mix(in srgb,var(--cc) 8%,var(--surface)));
+  box-shadow:0 0 0 3px var(--surface) inset,0 0 0 4px color-mix(in srgb,var(--cc) 45%,transparent) inset,0 3px 12px color-mix(in srgb,var(--cd) 30%,transparent)}
+.hm-char.cls::before,.hm-char.cls::after{content:"";position:absolute;width:16px;height:16px;border:3px solid var(--cc);pointer-events:none}
+.hm-char.cls::before{top:-2px;left:-2px;border-right:0;border-bottom:0;border-radius:10px 0 0 0}
+.hm-char.cls::after{bottom:-2px;right:-2px;border-left:0;border-top:0;border-radius:0 0 10px 0}
+.hm-char.cls:hover,.hm-char.cls:focus-visible{border-color:var(--cc);transform:translateY(-1px);box-shadow:0 0 0 3px var(--surface) inset,0 0 0 4px var(--cc) inset,0 6px 18px color-mix(in srgb,var(--cd) 45%,transparent)}
+.hm-char.cls .hm-n{color:color-mix(in srgb,var(--cc) 70%,var(--fg))}
+.cls-emb{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:1.1rem;
+  background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--cc) 75%,#fff),var(--cd));border:2px solid color-mix(in srgb,var(--cc) 60%,#F2CF7E);box-shadow:0 2px 8px color-mix(in srgb,var(--cd) 50%,transparent)}
+.cls-emb.big{position:static;width:58px;height:58px;font-size:1.8rem;flex:none}
+.cls-banner{display:flex;gap:14px;align-items:center;padding:14px 16px;border-radius:var(--r);color:#FFF4DE;border:2px solid var(--cc);
+  background:radial-gradient(120% 160% at 0% 0%,color-mix(in srgb,var(--cc) 70%,transparent),transparent 60%),linear-gradient(135deg,var(--cd),color-mix(in srgb,var(--cd) 70%,#000));
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--cc) 25%,transparent),0 6px 20px color-mix(in srgb,var(--cd) 40%,transparent)}
+.cls-bt{display:grid;gap:2px;min-width:0}
+.cls-bt b{font:700 1.2rem/1.15 var(--f-deco);letter-spacing:.03em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cls-bt small{font-size:.85rem;opacity:.9}
+.cls-bt i{font-family:var(--f-num);font-size:.85rem;opacity:.8}
+.cls-themed .card{border-top:3px solid var(--cc)}
+.cls-themed h2{color:color-mix(in srgb,var(--cc) 65%,var(--fg))}
+.cls-themed h2::before{color:var(--cc)}
+.cls-themed .btn.pri{background:linear-gradient(color-mix(in srgb,var(--cc) 85%,#fff),var(--cd));border-color:var(--cc);color:#FFF4DE}
+.cls-themed .prof.p1,.cls-themed .chip.on{background:var(--cc);border-color:var(--cc);color:#fff}
 .epic{position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;width:100%;padding:14px 18px;border-radius:14px;cursor:pointer;text-align:left;
   color:#FBE7B0;border:2px solid #D9A93E;
   background:radial-gradient(120% 140% at 0% 0%,#5B1420 0%,transparent 55%),radial-gradient(120% 140% at 100% 100%,#3A0E3E 0%,transparent 55%),linear-gradient(135deg,#1A0E0A,#2B1210 45%,#160A12);
@@ -333,6 +357,22 @@ const CLASS_DATA={
   Stregone:{hd:6,saves:["COS","CAR"],sa:"CAR",sub:"Origine stregonesca",subs:["Discendenza Draconica","Magia Selvaggia"]},
   Warlock:{hd:8,saves:["SAG","CAR"],sa:"CAR",sub:"Patrono ultraterreno",subs:["L'Arcifata","L'Immondo","Il Grande Antico"]},
 };
+const CLASS_THEME={
+  Barbaro:{c:"#B8492C",d:"#5E1F10",ic:"🪓",motto:"La furia è la mia armatura"},
+  Bardo:{c:"#C24A8C",d:"#5E1F45",ic:"🎻",motto:"Ogni storia merita una canzone"},
+  Chierico:{c:"#CFA02A",d:"#6B4E0E",ic:"☀️",motto:"La fede è la mia luce"},
+  Druido:{c:"#4F8D3B",d:"#21401A",ic:"🌿",motto:"La natura veglia su di me"},
+  Guerriero:{c:"#7D8A99",d:"#2F363F",ic:"🛡️",motto:"Acciaio e disciplina"},
+  Ladro:{c:"#5B6178",d:"#1A1C2A",ic:"🗡️",motto:"Nell'ombra, un passo avanti"},
+  Mago:{c:"#3E66C8",d:"#172A5E",ic:"🪄",motto:"Il sapere è potere"},
+  Monaco:{c:"#D18A2C",d:"#6A3F0F",ic:"☯️",motto:"Corpo e spirito in equilibrio"},
+  Paladino:{c:"#D9B54A",d:"#7A5A12",ic:"⚜️",motto:"Il giuramento non si spezza"},
+  Ranger:{c:"#5F803A",d:"#2A3B17",ic:"🏹",motto:"Nessuna preda sfugge"},
+  Stregone:{c:"#C9383A",d:"#561212",ic:"🔥",motto:"La magia scorre nel mio sangue"},
+  Warlock:{c:"#7E43BA",d:"#2F1450",ic:"👁️",motto:"Un patto, un prezzo"},
+};
+const clsTheme=c=>CLASS_THEME[c&&c.cls]||{c:"#B08A3E",d:"#4A3818",ic:"🧝",motto:""};
+const clsVars=c=>{const t=clsTheme(c);return `--cc:${t.c};--cd:${t.d}`};
 const BACKGROUNDS=["Accolito","Artigiano di Gilda","Artista","Ciarlatano","Criminale","Eremita","Eroe Popolare","Forestiero","Marinaio","Monello","Nobile","Sapiente","Soldato"];
 const ALIGNMENTS=["Legale Buono","Neutrale Buono","Caotico Buono","Legale Neutrale","Neutrale","Caotico Neutrale","Legale Malvagio","Neutrale Malvagio","Caotico Malvagio"];
 function choice(path,opts){
@@ -695,7 +735,9 @@ function renderView(){
   if(!k){v.innerHTML=`<div class="card"><h2>Nessuna campagna</h2><button class="btn pri" data-a="new-camp">Crea campagna</button></div>`;return}
   const charTabs=["scheda","inventario","capacita","magie"];
   if(charTabs.includes(UI.tab)&&!c){v.innerHTML=`<div class="card"><h2>Nessun personaggio in questa campagna</h2><p class="muted">Aggiungi il tuo eroe per usare scheda, inventario, capacità e magie.</p><div><button class="btn pri" data-a="new-char">Nuovo personaggio</button></div></div>`;return}
-  v.innerHTML=({scheda:vScheda,inventario:vInv,capacita:vCap,magie:vMagie,combattimento:vCombat,master:vMaster,missioni:vQuest,diario:vDiario,mondo:vMondo}[UI.tab]||vScheda)();
+  const themed=charTabs.includes(UI.tab)&&c;v.classList.toggle("cls-themed",!!themed);v.setAttribute("style",themed?clsVars(c):"");
+  if(themed){const t=clsTheme(c);v.innerHTML=`<div class="cls-banner"><span class="cls-emb big" aria-hidden="true">${t.ic}</span><div class="cls-bt"><b>${esc(c.name)}</b><small>${esc([c.cls||"Classe da scegliere",c.subclass,"livello "+c.level].filter(Boolean).join(" · "))}</small>${t.motto?`<i>«${esc(t.motto)}»</i>`:""}</div></div>`+({scheda:vScheda,inventario:vInv,capacita:vCap,magie:vMagie}[UI.tab])();}
+  else v.innerHTML=({scheda:vScheda,inventario:vInv,capacita:vCap,magie:vMagie,combattimento:vCombat,master:vMaster,missioni:vQuest,diario:vDiario,mondo:vMondo}[UI.tab]||vScheda)();
   v.querySelectorAll("details[data-id]").forEach(d=>d.addEventListener("toggle",()=>{d.open?UI.open.add(d.dataset.id):UI.open.delete(d.dataset.id)}));
 }
 const isOpen=id=>UI.open.has(id)?"open":"";
@@ -943,7 +985,8 @@ function vCombat(){
 /* ---- Home ---- */
 function vHome(){
   const camps=S.campaigns;
-  const cardFor=k=>{const sh=shareCode(k);const list=k.chars.map(c=>{const p=hpPct(c);return `<button class="hm-char" data-a="home-pick" data-k="${k.id}" data-c="${c.id}">
+  const cardFor=k=>{const sh=shareCode(k);const list=k.chars.map(c=>{const p=hpPct(c);const t=clsTheme(c);return `<button class="hm-char cls" style="${clsVars(c)}" data-a="home-pick" data-k="${k.id}" data-c="${c.id}">
+      <span class="cls-emb" aria-hidden="true">${t.ic}</span>
       <span class="hm-n">${esc(c.name)}</span>
       <span class="muted hm-s">${esc([c.race,c.cls,"liv. "+c.level].filter(Boolean).join(" · "))}${c.player?` — ${esc(c.player)}`:""}</span>
       <span class="hpbar" style="height:12px;min-width:0;flex:none"><i style="width:${p}%;background:${hpColor(p)}"></i></span>

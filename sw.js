@@ -1,5 +1,5 @@
 // Service worker del Taccuino: funziona offline e si aggiorna da solo.
-const CACHE = "taccuino-38c1370a64";
+const CACHE = "taccuino-5cf4d9d669";
 const SHELL = ["./", "index.html", "spells.json", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
