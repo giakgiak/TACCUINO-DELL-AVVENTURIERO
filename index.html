@@ -1242,7 +1242,7 @@ function vBestiaryLib(){const crs=[["","Tutti i GS"],["0","GS 0"],["0.125","GS 1
   return `<section class="card"><h2>Bestiario</h2><p class="muted" style="margin:0;font-size:.85rem">I mostri del manuale base (SRD 5.1). Tocca un nome per la scheda completa.</p>
     <div class="row"><input id="mp-q" placeholder="Cerca: goblin, drago, scheletro…" value="${esc(UI.mpq||"")}" style="flex:1 1 180px" autocomplete="off"><select id="mp-cr" aria-label="Grado di sfida">${crs.map(([v,l])=>`<option value="${v}" ${(UI.mpcr||"")===v?"selected":""}>${l}</option>`).join("")}</select></div>
     <div class="list" id="mp-res">${presetResults()}</div>
-    <p class="muted" style="margin:0;font-size:.72rem">Dati da System Reference Document 5.1, Wizards of the Coast, licenza CC-BY-4.0. Nomi e attacchi tradotti; i testi delle abilità speciali sono ancora in inglese.</p></section>`}
+    <p class="muted" style="margin:0;font-size:.72rem">Dati da System Reference Document 5.1, Wizards of the Coast, licenza CC-BY-4.0. Tradotti in italiano, distanze in metri.</p></section>`}
 function vEncounter(){const k=camp();const B=k.master.bestiary;
   const crs=[["","Tutti i GS"],["0","GS 0"],["0.125","GS 1/8"],["0.25","GS 1/4"],["0.5","GS 1/2"],["1","GS 1"],["2-4","GS 2–4"],["h","GS 5+"]];
   return vCombat(true)+`<section class="card"><div class="card-h"><h2>Il mio bestiario</h2><button class="btn sm" data-a="mb-new">+ Nuovo mostro</button></div>
@@ -1259,7 +1259,7 @@ function vEncounter(){const k=camp();const B=k.master.bestiary;
     <p class="muted" style="margin:0;font-size:.85rem">334 mostri del manuale base (SRD 5.1). Tocca un nome per la scheda, ☆ per salvarlo nel bestiario e personalizzarlo, + ⚔ per metterlo subito in combattimento.</p>
     <div class="row"><input id="mp-q" placeholder="Cerca: goblin, drago, scheletro…" value="${esc(UI.mpq||"")}" style="flex:1 1 180px" autocomplete="off"><select id="mp-cr" aria-label="Grado di sfida">${crs.map(([v,l])=>`<option value="${v}" ${(UI.mpcr||"")===v?"selected":""}>${l}</option>`).join("")}</select></div>
     <div class="list" id="mp-res">${presetResults()}</div>
-    <p class="muted" style="margin:0;font-size:.72rem">Dati dei mostri da System Reference Document 5.1, Wizards of the Coast, licenza CC-BY-4.0. Nomi e attacchi tradotti; i testi delle abilità speciali sono ancora in inglese.</p></section>`}
+    <p class="muted" style="margin:0;font-size:.72rem">Dati dei mostri da System Reference Document 5.1, Wizards of the Coast, licenza CC-BY-4.0. Tradotti in italiano, distanze in metri.</p></section>`}
 document.addEventListener("change",e=>{if(e.target.id==="mp-cr"){UI.mpcr=e.target.value;const r=$("#mp-res");if(r)r.innerHTML=presetResults()}});
 
 /* ambienti */
