@@ -183,6 +183,27 @@ details.it>summary .t.tt{display:grid;gap:1px;white-space:normal}
 .hm-n{font-weight:700;font-size:1rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hm-s{font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hm-camp.cur{border-color:var(--accent)}
+.epic{position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;width:100%;padding:14px 18px;border-radius:14px;cursor:pointer;text-align:left;
+  color:#FBE7B0;border:2px solid #D9A93E;
+  background:radial-gradient(120% 140% at 0% 0%,#5B1420 0%,transparent 55%),radial-gradient(120% 140% at 100% 100%,#3A0E3E 0%,transparent 55%),linear-gradient(135deg,#1A0E0A,#2B1210 45%,#160A12);
+  box-shadow:0 0 0 1px #6B4A12 inset,0 0 0 4px rgba(217,169,62,.18),0 6px 22px rgba(120,20,30,.45),0 0 28px rgba(217,169,62,.28);
+  transition:transform .2s,box-shadow .2s;font:inherit}
+.epic::before{content:"";position:absolute;inset:-40% -20%;background:linear-gradient(100deg,transparent 40%,rgba(255,226,150,.38) 50%,transparent 60%);transform:translateX(-70%);animation:epicShine 3.6s ease-in-out infinite}
+.epic::after{content:"";position:absolute;inset:5px;border:1px solid rgba(217,169,62,.45);border-radius:9px;pointer-events:none}
+.epic:hover,.epic:focus-visible{transform:translateY(-2px) scale(1.01);box-shadow:0 0 0 1px #6B4A12 inset,0 0 0 5px rgba(217,169,62,.3),0 10px 30px rgba(140,24,36,.55),0 0 42px rgba(255,200,90,.45)}
+.epic:active{transform:scale(.98)}
+.epic-crown{font-size:2rem;filter:drop-shadow(0 0 8px rgba(255,200,90,.85));animation:epicFloat 2.8s ease-in-out infinite;position:relative}
+.epic-txt{display:grid;gap:2px;min-width:0;flex:1;position:relative}
+.epic-txt b{font:700 1.2rem/1.1 var(--f-deco);letter-spacing:.04em;color:#FFE9A8;text-shadow:0 0 12px rgba(255,190,80,.55),0 2px 0 #3B0C10}
+.epic-txt small{font-size:.8rem;color:#E6C989;opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.epic-arrow{font-size:1.4rem;color:#FFD877;position:relative;transition:transform .2s}
+.epic:hover .epic-arrow{transform:translateX(4px) rotate(-8deg)}
+@keyframes epicShine{0%,55%{transform:translateX(-70%)}85%,100%{transform:translateX(70%)}}
+@keyframes epicFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.epic-veil{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:radial-gradient(circle at 50% 45%,rgba(90,20,30,.92),rgba(10,5,5,.97) 70%);color:#FFE9A8;font:700 clamp(1.4rem,6vw,2.4rem) var(--f-deco);text-align:center;text-shadow:0 0 18px rgba(255,190,80,.7);animation:veil 1.15s ease forwards;pointer-events:none;padding:16px}
+.epic-veil span{display:block;font:500 1rem var(--f-display);color:#E6C989;margin-top:8px;letter-spacing:.1em}
+@keyframes veil{0%{opacity:0}20%{opacity:1}70%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.epic::before,.epic-crown{animation:none}.epic-veil{display:none}}
 .mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr));gap:12px}
 .mcard{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:12px;display:grid;gap:8px;min-width:0}
 .mcard.down{border-color:var(--hp-low)}
@@ -929,8 +950,13 @@ function vHome(){
       <span class="muted hm-s">${c.hp.cur}/${c.hp.max} PF · CA ${esc(c.ac)}</span></button>`}).join("");
     return `<section class="card hm-camp ${k.id===S.active?"cur":""}">
       <div class="card-h"><h2 style="margin:0">${esc(k.name)}</h2><div class="row" style="gap:6px">${sh?`<span class="tag gold" title="Codice ${esc(sh)}">Online</span>`:`<span class="tag">Su questo dispositivo</span>`}<span class="tag">${k.chars.length} PG</span></div></div>
+      <button class="epic" data-a="home-master" data-k="${k.id}" aria-label="Apri come Master: ${esc(k.name)}">
+        <span class="epic-crown" aria-hidden="true">👑</span>
+        <span class="epic-txt"><b>Apri come Master</b><small>Prendi il comando di ${esc(k.name)}</small></span>
+        <span class="epic-arrow" aria-hidden="true">⚔</span>
+      </button>
       ${list?`<div class="hm-grid">${list}</div>`:`<div class="empty">Nessun personaggio ancora.</div>`}
-      <div class="row"><button class="btn sm" data-a="home-newchar" data-k="${k.id}">+ Personaggio</button><button class="btn sm" data-a="home-master" data-k="${k.id}">Apri come Master</button>${fbEnabled()?`<button class="btn sm ghost" data-a="home-share" data-k="${k.id}">${sh?"Codice":"Condividi online"}</button>`:""}</div>
+      <div class="row"><button class="btn sm" data-a="home-newchar" data-k="${k.id}">+ Personaggio</button>${fbEnabled()?`<button class="btn sm ghost" data-a="home-share" data-k="${k.id}">${sh?"Codice":"Condividi online"}</button>`:""}</div>
     </section>`};
   return `<section class="card"><h2 style="margin:0">Benvenuto, avventuriero</h2>
       <p class="muted" style="margin:0">Scegli il personaggio con cui giocare, oppure apri la campagna come Master.</p>
@@ -1131,7 +1157,8 @@ const A={
   "tab-go":b=>{closeModal();UI.tab=b.dataset.v;window.scrollTo({top:0})},
   "cloud-info":()=>{toast(`<div>${esc(UI.cloud)}</div>`);return "noRender"},
   "home-pick":b=>{S.active=b.dataset.k;const k=camp();k.activeChar=b.dataset.c;UI.tab="scheda";window.scrollTo(0,0)},
-  "home-master":b=>{S.active=b.dataset.k;UI.tab="master";window.scrollTo(0,0)},
+  "home-master":b=>{S.active=b.dataset.k;UI.tab="master";window.scrollTo(0,0);
+    if(!matchMedia("(prefers-reduced-motion:reduce)").matches){const v=document.createElement("div");v.className="epic-veil";v.innerHTML=`<div>👑<br>Il Master prende il comando<span>${esc(camp().name)}</span></div>`;document.body.appendChild(v);setTimeout(()=>v.remove(),1200)}},
   "home-newchar":b=>{S.active=b.dataset.k;UI.tab="home";render();A["new-char"]();return "noRender"},
   "home-share":b=>{S.active=b.dataset.k;render();shareCamp();return "noRender"},
   "ms-dmg":b=>{const c=camp().chars.find(x=>x.id===b.dataset.id);const n=numIn("#md-"+c.id);if(n)damage(c,n)},
