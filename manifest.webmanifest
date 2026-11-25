@@ -1,7 +1,7 @@
 {
   "name": "Taccuino dell'Avventuriero",
   "short_name": "Taccuino",
-  "description": "Gestionale per campagne di D&D 5e",
+  "description": "Gestionale per campagne di giochi di ruolo fantasy, compatibile con la 5ª edizione",
   "lang": "it",
   "start_url": "./",
   "scope": "./",
