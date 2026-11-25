@@ -329,6 +329,7 @@ body.no-nav .tabs,body.no-nav .bnav{display:none!important}
 @media (max-width:480px){.slotgrid{grid-template-columns:repeat(5,minmax(0,1fr))}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 .lu-row.linked .ls-name{box-shadow:inset 4px 0 0 #4F8D3B}
+.sez-nav{display:flex;gap:6px;overflow-x:auto;padding:6px 0;background:var(--bg,inherit)}.sez-nav .chip{white-space:nowrap}.sez{display:grid;gap:inherit;scroll-margin-top:56px}.sez-h{margin:14px 0 0;font-size:1.15rem;display:flex;gap:8px;align-items:center}#sez-sch{scroll-margin-top:56px}
 </style>
 
 <div class="top">
@@ -370,8 +371,8 @@ const TABS=[["home","Home"],["scheda","Scheda"],["inventario","Inventario"],["ca
 const TAB_IC={home:"🏰",scheda:"📜",inventario:"🎒",capacita:"✨",magie:"🔮",combattimento:"⚔️",master:"👑",missioni:"🗺️",diario:"📖",mondo:"🧙"};
 const TAB_DESC={home:"Scegli campagna e personaggio",scheda:"Caratteristiche, PF, abilità",inventario:"Oggetti, peso e monete",capacita:"Privilegi e talenti",magie:"Incantesimi e slot",combattimento:"Iniziativa e turni",master:"Tutto il gruppo a colpo d'occhio",missioni:"Missioni e oggetti chiave",diario:"Resoconti delle sessioni",mondo:"Personaggi e luoghi incontrati"};
 const BNAV=["home","scheda","magie","combattimento"];
-const MODE_TABS={char:["scheda","inventario","capacita","magie","combattimento","missioni","diario","mondo"],master:["master","missioni","diario","mondo"]};
-const MODE_BNAV={char:["scheda","inventario","magie","combattimento"],master:["master","missioni","diario","mondo"]};
+const MODE_TABS={char:["scheda","combattimento","missioni","diario","mondo"],master:["master","missioni","diario","mondo"]};
+const MODE_BNAV={char:["scheda","combattimento","missioni","diario"],master:["master","missioni","diario","mondo"]};
 const LIB_TABS=["home","libro","bestiario","regole"];
 TAB_IC.libro="📚";TAB_IC.bestiario="👹";
 
@@ -714,7 +715,7 @@ document.addEventListener("input",e=>{
   let v=el.type==="checkbox"?el.checked:el.value;
   if(el.dataset.n!==undefined&&el.type!=="checkbox"){v=v===""?0:Number(v);if(Number.isNaN(v))return}
   setv(el.dataset.b,v);touch();refreshLive();
-  if(el.dataset.b==="c.level"){clearTimeout(UI.lvT);UI.lvT=setTimeout(()=>{const c=ch();if(c&&Number(c.level)>=1&&syncCasting(c)){touch()}},700)}
+  if(el.dataset.b==="c.level"){clearTimeout(UI.lvT);UI.lvT=setTimeout(()=>{const c=ch();if(c&&Number(c.level)>=1&&syncCasting(c)){touch();const y=window.scrollY,f=document.activeElement&&document.activeElement.id;render();window.scrollTo(0,y);const e=f&&document.getElementById(f);if(e){e.focus();try{e.setSelectionRange(e.value.length,e.value.length)}catch(x){}}}},700)}
   if(el.tagName==="SELECT"||el.type==="checkbox")render();
 });
 
@@ -786,7 +787,9 @@ function damage(c,n){n=Math.max(0,Math.floor(n));if(!n)return;
 function heal(c,n){n=Math.max(0,Math.floor(n));if(!n)return;if(c.hp.cur===0)c.death={s:0,f:0};c.hp.cur=Math.min(c.hp.max,c.hp.cur+n)}
 
 /* ============ rendering ============ */
-function render(){renderTop();renderView();if(UI.drawer)renderDrawer()}
+/* inventario, capacità e magie stanno dentro la Scheda: i vecchi indirizzi portano alla sezione giusta */
+const SEZ={inventario:"sez-inv",capacita:"sez-cap",magie:"sez-mag"};
+function render(){if(SEZ[UI.tab]){const id=SEZ[UI.tab];UI.tab="scheda";setTimeout(()=>{const e=document.getElementById(id);if(e)e.scrollIntoView({block:"start"})},40)}renderTop();renderView();if(UI.drawer)renderDrawer()}
 function curMode(){if(LIB_TABS.includes(UI.tab))return "home";if(UI.tab==="master")return UI.mode="master";if(["scheda","inventario","capacita","magie"].includes(UI.tab))return UI.mode="char";return UI.mode||"char"}
 function renderTop(){
   const k=camp();
@@ -824,13 +827,16 @@ function renderView(){
   const charTabs=["scheda","inventario","capacita","magie"];
   if(charTabs.includes(UI.tab)&&!c){v.innerHTML=`<div class="card"><h2>Nessun personaggio in questa campagna</h2><p class="muted">Aggiungi il tuo eroe per usare scheda, inventario, capacità e magie.</p><div><button class="btn pri" data-a="new-char">Nuovo personaggio</button></div></div>`;return}
   const themed=charTabs.includes(UI.tab)&&c;v.classList.toggle("cls-themed",!!themed);v.setAttribute("style",themed?clsVars(c):"");
-  if(themed){const t=clsTheme(c);v.innerHTML=`<div class="cls-banner"><span class="cls-emb big" aria-hidden="true">${t.ic}</span><div class="cls-bt"><b>${esc(c.name)}</b><small>${esc([c.cls||"Classe da scegliere",c.subclass,"livello "+c.level].filter(Boolean).join(" · "))}</small>${t.motto?`<i>«${esc(t.motto)}»</i>`:""}</div></div>`+({scheda:vScheda,inventario:vInv,capacita:vCap,magie:vMagie}[UI.tab])();}
+  if(themed){const t=clsTheme(c);v.innerHTML=`<div class="cls-banner"><span class="cls-emb big" aria-hidden="true">${t.ic}</span><div class="cls-bt"><b>${esc(c.name)}</b><small>${esc([c.cls||"Classe da scegliere",c.subclass,"livello "+c.level].filter(Boolean).join(" · "))}</small>${t.motto?`<i>«${esc(t.motto)}»</i>`:""}</div></div>`+({scheda:vSchedaTutta,inventario:vInv,capacita:vCap,magie:vMagie}[UI.tab])();}
   else v.innerHTML=({scheda:vScheda,inventario:vInv,capacita:vCap,magie:vMagie,combattimento:vCombat,master:vMaster,missioni:vQuest,diario:vDiario,mondo:vMondo}[UI.tab]||vScheda)();
   v.querySelectorAll("details[data-id]").forEach(d=>d.addEventListener("toggle",()=>{d.open?UI.open.add(d.dataset.id):UI.open.delete(d.dataset.id)}));
 }
 const isOpen=id=>UI.open.has(id)?"open":"";
 
 /* ---- Scheda ---- */
+function vSchedaTutta(){const sec=(id,ic,t,html)=>`<div id="${id}" class="sez"><h2 class="sez-h"><span aria-hidden="true">${ic}</span> ${t}</h2>${html}</div>`;
+  return `<nav class="sez-nav" aria-label="Sezioni della scheda">${[["sez-sch","📜","Scheda"],["sez-inv","🎒","Inventario"],["sez-cap","✨","Capacità"],["sez-mag","🔮","Magia"]].map(([id,ic,t])=>`<button class="chip" data-a="goto-sez" data-v="${id}"><span aria-hidden="true">${ic}</span> ${t}</button>`).join("")}</nav>`
+    +`<div id="sez-sch"></div>`+vScheda()+sec("sez-inv","🎒","Inventario",vInv())+sec("sez-cap","✨","Capacità",vCap())+sec("sez-mag","🔮","Magia",vMagie())}
 function vSchedaMagia(c){const kind=guessCaster(c.cls);const sl=slotsLeft(c);if(!c.spells.length&&!sl.length&&kind==="none"&&!(CLASS_DATA[c.cls]&&CLASS_DATA[c.cls].sa))return "";
   const prep=c.spells.filter(s=>s.prepared&&Number(s.level)>0).length,can=c.spells.filter(s=>Number(s.level)===0).length;
   return `<section class="card"><div class="card-h"><h2>Magia</h2><button class="btn sm" data-a="tab" data-v="magie">Apri Magie →</button></div>
@@ -873,7 +879,6 @@ function vScheda(){
     </div>
   </section>
 
-  ${vSchedaMagia(c)}
   <section class="card">
     <div class="card-h"><h2>Caratteristiche</h2><span class="muted" style="font-size:.8rem">Tocca il modificatore per tirare</span></div>
     <div class="abil">${AB.map(a=>{const t=Number(c.abTemp[a])||0;return `<div class="ab"><span class="lbl" title="${AB_FULL[a]}">${a}</span><button class="mod" data-a="r-ab" data-v="${a}" data-live="mod:${a}">${sgn(amod(c,a))}</button>
@@ -1000,7 +1005,7 @@ function vMagie(){
 let SPELLDB=null,spellErr=false;
 const TR=(()=>{try{return JSON.parse(ls.get("ddf-tr")||"{}")}catch(e){return{}}})();
 function upgradeMySpells(){if(!SPELLDB)return;const by=Object.fromEntries(SPELLDB.map(o=>[o.i,o]));let n=0;for(const k of S.campaigns)for(const c of k.chars)for(const s of c.spells){const o=s.srd&&by[s.srd];if(!o||!o.it)continue;if(!s.tr){s.tr=true;s.name=o.n;s.desc=o.x;s.higher=o.h||"";s.material=o.m||"";n++}if(!s.brief){s.brief=o.b;n++}}if(n){S.campaigns.forEach(k=>k.updatedAt=Date.now());save()}}
-function loadSpells(){if(SPELLDB||loadSpells.p)return;loadSpells.p=fetch("spells.json").then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{SPELL_SRD=d;SPELLDB=packSpells(d);upgradeMySpells();if(UI.tab==="magie")renderView();const r=document.getElementById("mcmd-res");if(r&&UI.mq)r.innerHTML=cmdResults(UI.mq)}).catch(()=>{spellErr=true;loadSpells.p=null;if(UI.tab==="magie")renderView()})}
+function loadSpells(){if(SPELLDB||loadSpells.p)return;loadSpells.p=fetch("spells.json").then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{SPELL_SRD=d;SPELLDB=packSpells(d);upgradeMySpells();if(UI.tab==="magie"||UI.tab==="scheda")renderView();const r=document.getElementById("mcmd-res");if(r&&UI.mq)r.innerHTML=cmdResults(UI.mq)}).catch(()=>{spellErr=true;loadSpells.p=null;if(UI.tab==="magie")renderView()})}
 function guessClass(cls){const s=(cls||"").toLowerCase();return CLASSES.find(k=>s.includes(k.toLowerCase()))||""}
 function dbView(o){const t=o.it?{}:(TR[o.i]||{});return{brief:o.b||"",name:t.n||o.n,orig:o.en||(t.n?o.n:""),level:o.l,school:o.s,time:o.t,range:o.r,comp:o.c,material:o.m||"",duration:o.d,conc:!!o.k,ritual:!!o.ri,classes:o.cls,desc:t.x||o.x,higher:t.h||o.h||"",dmg:o.dm||"",ts:o.ts||"",dt:o.dt||"",srd:o.i,translated:!!(o.it||t.x)}}
 function mySpellView(s){return{brief:s.brief||"",name:s.name,level:s.level,school:s.school,time:s.time,range:s.range,comp:s.comp,material:s.material||"",duration:s.duration,conc:s.conc,ritual:s.ritual,classes:s.classes||[],desc:s.desc,higher:s.higher||"",dmg:s.dmg,ts:s.ts||"",srd:s.srd,translated:!!s.tr}}
@@ -1763,6 +1768,7 @@ document.addEventListener("input",e=>{const t=e.target;if(!t.classList||!t.class
 document.addEventListener("change",e=>{if(e.target.id==="lu-table"){const N=(Number(ch().level)||1)+1;if(e.target.value==="none"){const c=ch();for(let l=1;l<=9;l++)$("#lu-slot-"+l).value=c.slots[l].max}else luFillTable(e.target.value,N)}});
 Object.assign(A,{
   levelup:()=>{levelUpModal();return "noRender"},
+  "goto-sez":b=>{const e=document.getElementById(b.dataset.v);if(e)e.scrollIntoView({behavior:"smooth",block:"start"});return "noRender"},
   "sp-add":()=>{const c=ch();modal(`<h2>Aggiungi incantesimo</h2><p class="muted" style="margin:0;font-size:.85rem">Scrivi il nome e sceglilo dall'elenco: tutti i dati (gittata, durata, danni, descrizione) arrivano dal compendio.</p>
     <datalist id="dl-spells">${spellOptions(c)}</datalist><input id="spa-name" list="dl-spells" autocomplete="off" placeholder="es. Palla di Fuoco"><div id="spa-info" class="muted" style="font-size:.85rem;min-height:1.2em"></div>
     <div class="row"><button class="btn pri" data-a="spa-ok">Aggiungi</button><button class="btn" data-a="spa-custom">Crea personalizzato</button><button class="btn ghost" data-a="modal-close">Annulla</button></div>`);setTimeout(()=>{const i=$("#spa-name");if(i)i.focus()},50);return "noRender"},
