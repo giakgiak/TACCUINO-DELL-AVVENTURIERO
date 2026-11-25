@@ -594,8 +594,23 @@ async function fbStart(){
 function campRef(code){return FB.fs.doc(FB.db,"campagne",code)}
 function pgCol(code){return FB.fs.collection(FB.db,"campagne",code,"pg")}
 function schedulePush(){clearTimeout(pushT);pushT=setTimeout(pushShared,900)}
+/* tutte le campagne sono online: un indice comune (una voce piccola per campagna) le mostra a chiunque abbia il codice del sito */
+const IDX="TACC-UINO-INDI-CE00";const idxKey=code=>code.replace(/-/g,"");let IDXSUB=null;const IDXSYNC={};UI.online={};
+function ensureCodes(){let n=0;for(const k of S.campaigns)if(!shareCode(k)&&!k.__demo){k.share={code:newCode()};n++}if(n)ls.set("ddf-state",JSON.stringify(S));return n}
+function idxEntry(k){return JSON.stringify({code:shareCode(k),name:k.name,pg:k.chars.map(c=>c.name).slice(0,12),n:k.chars.length})}
+function pushIndex(){if(!FB)return;const {fs}=FB;
+  if(!IDXSYNC.__root){IDXSYNC.__root=1;fs.getDoc(campRef(IDX)).then(d=>{if(!d.exists())return fs.setDoc(campRef(IDX),{json:JSON.stringify({name:"Indice delle campagne"}),updatedAt:Date.now(),by:CLIENT})}).catch(shareErr)}
+  for(const k of S.campaigns){const code=shareCode(k);if(!code||k.__demo)continue;const on=UI.online[code];if(on&&on.del)continue;const j=idxEntry(k);if(IDXSYNC[code]===j)continue;IDXSYNC[code]=j;
+    fs.setDoc(fs.doc(pgCol(IDX),idxKey(code)),{json:j,updatedAt:Date.now(),by:CLIENT}).catch(shareErr)}}
+function listenIndex(){if(!FB||IDXSUB)return;const {fs}=FB;
+  IDXSUB=fs.onSnapshot(pgCol(IDX),q=>{const o={};q.forEach(d=>{try{const e=JSON.parse(d.data().json);if(e&&e.code)o[e.code]=e}catch(e){}});UI.online=o;
+    // campagna eliminata per tutti: sparisce anche dagli altri dispositivi
+    const gone=S.campaigns.filter(k=>shareCode(k)&&o[shareCode(k)]&&o[shareCode(k)].del);
+    if(gone.length){S.campaigns=S.campaigns.filter(k=>!gone.includes(k));gone.forEach(k=>{const c=shareCode(k);if(LIVE_SUBS[c]){LIVE_SUBS[c]();delete LIVE_SUBS[c]}});if(!camp())S.active=S.campaigns[0]?S.campaigns[0].id:null;ls.set("ddf-state",JSON.stringify(S));if(!camp()&&UI.tab!=="home")UI.tab="home"}
+    if(UI.tab==="home"||gone.length)render()},shareErr)}
+function onlineOnly(){const mine=new Set(S.campaigns.map(shareCode).filter(Boolean));return Object.values(UI.online||{}).filter(e=>!e.del&&!mine.has(e.code)).sort((a,b)=>String(a.name).localeCompare(String(b.name),"it"))}
 function pushShared(){
-  if(!FB)return;const {fs}=FB;
+  if(!FB)return;const {fs}=FB;ensureCodes();pushIndex();listenAll();
   for(const k of S.campaigns){const code=shareCode(k);if(!code)continue;const sy=fbSynced[code]||(fbSynced[code]={core:null,chars:{}});
     const core=campCore(k);if(sy.core!==core){sy.core=core;fs.setDoc(campRef(code),{json:core,updatedAt:Date.now(),by:CLIENT}).catch(shareErr)}
     const ids=new Set();
@@ -625,17 +640,18 @@ function listenAll(){for(const k of S.campaigns){const c=shareCode(k);if(c)liste
 async function initShare(){
   if(!fbEnabled())return;
   const q=new URLSearchParams(location.search).get("c");
-  if(!S.campaigns.some(shareCode)&&!q)return; // carica Firebase solo se serve
-  try{await fbStart();listenAll();schedulePush();if(q){history.replaceState(null,"",location.pathname);joinCode(q)}}catch(e){}
+  ensureCodes();setShareStatus("collego le campagne online…");
+  try{await fbStart();listenAll();listenIndex();schedulePush();if(q){history.replaceState(null,"",location.pathname);joinCode(q)}}catch(e){}
 }
 async function shareCamp(){
   const k=camp();if(!k)return;
   if(!fbEnabled()){toast("La condivisione online funziona dall'app sul sito.");return}
   if(!shareCode(k)){try{setShareStatus("attivo la condivisione…");await fbStart()}catch(e){toast("Non riesco a collegarmi. Controlla la connessione e riprova.");return}
-    delete k.__demo;k.share={code:newCode()};touch();schedulePush();listen(k.share.code)}
+    delete k.__demo;if(!shareCode(k))k.share={code:newCode()};touch();schedulePush();listen(k.share.code)}
   showShare(k);
 }
-function codeBox(k){if(!fbEnabled())return "";const sh=shareCode(k);
+function codeBox(k){return ""}
+function codeBoxOld(k){if(!fbEnabled())return "";const sh=shareCode(k);
   if(!sh)return `<div class="codebox off"><span class="muted">Vuoi giocare insieme da più telefoni?</span><button class="btn sm pri" data-a="home-share" data-k="${k.id}">🔗 Condividi e ottieni il codice</button></div>`;
   return `<div class="codebox"><span class="lbl">Codice campagna</span><b class="num">${esc(sh)}</b><span class="row" style="gap:4px"><button class="btn sm" data-a="copy-code" data-k="${k.id}">Copia</button><button class="btn sm pri" data-a="home-share" data-k="${k.id}">Invita</button></span></div>`}
 function shareLink(code){return location.origin+location.pathname+"?c="+code.replace(/-/g,"")}
@@ -1071,8 +1087,11 @@ function vHome(){
     </section>`};
   return `<section class="card"><h2 style="margin:0">Benvenuto, avventuriero</h2>
       <p class="muted" style="margin:0">Scegli il personaggio con cui giocare, oppure apri la campagna come Master.</p>
-      <div class="row"><button class="btn pri sm" data-a="new-camp">Nuova campagna</button>${fbEnabled()?`<button class="btn sm" data-a="join">Entra con un codice</button>`:""}</div></section>
-    ${camps.map(cardFor).join("")||`<div class="empty">Nessuna campagna. Creane una per iniziare.</div>`}
+      <div class="row"><button class="btn pri sm" data-a="new-camp">Nuova campagna</button></div>${fbEnabled()?`<p class="muted" style="margin:0;font-size:.8rem">Le campagne sono online: chi entra nel sito le vede tutte e le modifiche arrivano a tutti.</p>`:""}</section>
+    ${camps.map(cardFor).join("")||(onlineOnly().length?"":`<div class="empty">Nessuna campagna. Creane una per iniziare.</div>`)}
+    ${onlineOnly().map(e=>`<section class="card hm-camp"><div class="card-h"><h2 style="margin:0">${esc(e.name)}</h2><div class="row" style="gap:6px"><span class="tag gold">Online</span><span class="tag">${Number(e.n)||0} PG</span></div></div>
+      ${(e.pg||[]).length?`<div class="muted" style="font-size:.85rem">${esc(e.pg.join(", "))}</div>`:""}
+      <div class="row"><button class="btn pri" data-a="open-online" data-v="${esc(e.code)}">Apri la campagna</button></div></section>`).join("")}
     <section class="card"><h2 style="margin:0">Biblioteca</h2><p class="muted" style="margin:0">Da consultare quando vuoi, senza aprire un personaggio.</p>
       <div class="lib"><button class="lib-b" data-a="tab" data-v="libro"><span aria-hidden="true">🔮</span><b>Manuale degli incantesimi</b><small>${SPELLDB?SPELLDB.length:319} incantesimi in italiano</small></button><button class="lib-b" data-a="tab" data-v="bestiario"><span aria-hidden="true">👹</span><b>Bestiario</b><small>${MONDB?MONDB.length:334} mostri${PACKS.length?"":" del manuale base"}</small></button>${PACKRULES.length?`<button class="lib-b" data-a="tab" data-v="regole"><span aria-hidden="true">📖</span><b>Regole e opzioni</b><small>Sottoclassi, razze, talenti e altro: ${PACKRULES.length} sezioni</small></button>`:""}</div>${packsBox()}</section>`;
 }
@@ -1597,6 +1616,7 @@ const A={
   "pack-del":b=>{const p=PACKS.find(x=>x.id===b.dataset.id);if(!p)return "noRender";confirmBox(`Rimuovere <b>${esc(p.name)}</b> da questo dispositivo? I mostri già salvati nel tuo bestiario restano.`,"Rimuovi",()=>{packTx("readwrite",st=>st.delete(p.id)).catch(()=>{});PACKS=PACKS.filter(x=>x!==p);if(UI.mpsrc===p.name)UI.mpsrc="";packsApply()});return "noRender"},
   "send-char":()=>{sendChar();return "noRender"},
   "share-camp":()=>{shareCamp();return "noRender"},
+  "open-online":b=>{joinCode(b.dataset.v);return "noRender"},
   "copy-code":b=>{const k=S.campaigns.find(x=>x.id===b.dataset.k);const c=shareCode(k);if(!c)return "noRender";(navigator.clipboard?navigator.clipboard.writeText(c):Promise.reject()).then(()=>toast(`Codice copiato: <b>${esc(c)}</b>`),()=>toast(`Codice: <b>${esc(c)}</b>`));return "noRender"},
   "join":()=>{modal(`<h2>Entra in una campagna</h2><p style="margin:0">Inserisci il codice che ti ha dato il Master (o chi ha creato la campagna).</p><input id="join-code" placeholder="ABCD-EFGH-JKLM-NPQR" autocapitalize="characters" autocomplete="off"><div class="row"><button class="btn pri" data-a="join-ok">Entra</button><button class="btn ghost" data-a="modal-close">Annulla</button></div>`);return "noRender"},
   "join-ok":()=>{joinCode($("#join-code").value);return "noRender"},
@@ -1617,7 +1637,10 @@ const A={
   "ncp-ok":()=>{const k=newCamp($("#ncp-name").value.trim()||"Nuova campagna");S.campaigns.push(k);S.active=k.id;closeModal()},
   "ren-camp":()=>{modal(`<h2>Rinomina campagna</h2><input id="rc-name" value="${esc(camp().name)}"><div class="row"><button class="btn pri" data-a="rc-ok">Salva</button><button class="btn ghost" data-a="modal-close">Annulla</button></div>`);return "noRender"},
   "rc-ok":()=>{camp().name=$("#rc-name").value.trim()||camp().name;delete camp().__demo;closeModal()},
-  "del-camp":()=>{const k=camp();confirmBox(`Eliminare la campagna <b>${esc(k.name)}</b> con tutti i personaggi, le missioni e il diario? Non si può annullare.`,"Elimina",()=>{S.campaigns=S.campaigns.filter(x=>x.id!==k.id);pendingDel.add(k.id);S.active=S.campaigns[0]?S.campaigns[0].id:null});return "noRender"},
+  "del-camp":()=>{const k=camp();const code=shareCode(k)&&FB?shareCode(k):null;confirmBox(`Eliminare la campagna <b>${esc(k.name)}</b> con tutti i personaggi, le missioni e il diario?${code?" Sparisce <b>per tutti</b>, su ogni dispositivo.":""} Non si può annullare.`,"Elimina",()=>{
+    if(code){const {fs}=FB;const j=JSON.stringify({code,name:k.name,del:true});IDXSYNC[code]=j;fs.setDoc(fs.doc(pgCol(IDX),idxKey(code)),{json:j,updatedAt:Date.now(),by:CLIENT}).catch(shareErr);
+      for(const c of k.chars)fs.deleteDoc(fs.doc(pgCol(code),c.id)).catch(()=>{});if(LIVE_SUBS[code]){LIVE_SUBS[code]();delete LIVE_SUBS[code]}delete fbSynced[code]}
+    S.campaigns=S.campaigns.filter(x=>x.id!==k.id);pendingDel.add(k.id);S.active=S.campaigns[0]?S.campaigns[0].id:null});return "noRender"},
   export:()=>{doExport();return "noRender"},
   import:()=>{$("#file-import").click();return "noRender"},
   "imp-replace":()=>{const d=pendingImport;pendingImport=null;S.campaigns.forEach(k=>pendingDel.add(k.id));S.campaigns=d;S.active=d[0].id;migrate();d.forEach(k=>pendingDel.delete(k.id));closeModal();toast("Backup importato.")},
@@ -1820,7 +1843,8 @@ $("#file-import").addEventListener("change",async e=>{
 /* ============ avvio ============ */
 /* ============ codice di accesso (solo sito, cancello di cortesia) ============ */
 async function accHash(code){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(window.ACCESS.salt+":"+code));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
-function boot(){load();try{const u=JSON.parse(sessionStorage.getItem("ddf-tab")||"null");if(u&&TABS.concat(LIB_TABS.map(x=>[x])).some(([id])=>id===u.t)){UI.tab=u.t;if(u.m)UI.mode=u.m;if(u.v)UI.spellView=u.v}}catch(e){}render();loadSpells();packsLoad();}
+let BOOTED=false;
+function boot(){load();BOOTED=true;try{const u=JSON.parse(sessionStorage.getItem("ddf-tab")||"null");if(u&&TABS.concat(LIB_TABS.map(x=>[x])).some(([id])=>id===u.t)){UI.tab=u.t;if(u.m)UI.mode=u.m;if(u.v)UI.spellView=u.v}}catch(e){}render();loadSpells();packsLoad();initShare();}
 (function(){const A=window.ACCESS;if(!A||!A.hash||!(window.crypto&&crypto.subtle)||ls.get("ddf-access")===A.hash){boot();return}
   const g=document.createElement("div");g.id="gate";g.setAttribute("role","dialog");g.setAttribute("aria-modal","true");
   g.style.cssText="position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:16px;background:#12141C;color:#f3ead8;font:16px system-ui,sans-serif";
@@ -1828,10 +1852,10 @@ function boot(){load();try{const u=JSON.parse(sessionStorage.getItem("ddf-tab")|
   document.body.appendChild(g);const i=g.querySelector("input");setTimeout(()=>i.focus(),50);
   g.querySelector("form").addEventListener("submit",async e=>{e.preventDefault();const h=await accHash(i.value.trim());
     if(h===A.hash){ls.set("ddf-access",h);g.remove();boot()}else{g.querySelector("#gate-err").textContent="Codice non corretto";i.select()}})})();
-document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden"){ls.set("ddf-state",JSON.stringify(S));pushCloud()}});
-window.addEventListener("pagehide",()=>ls.set("ddf-state",JSON.stringify(S)));
+document.addEventListener("visibilitychange",()=>{if(BOOTED&&document.visibilityState==="hidden"){ls.set("ddf-state",JSON.stringify(S));pushCloud()}});
+window.addEventListener("pagehide",()=>{if(BOOTED)ls.set("ddf-state",JSON.stringify(S))});
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
-initCloud();initShare();
+initCloud();
 })();
 </script>
 
