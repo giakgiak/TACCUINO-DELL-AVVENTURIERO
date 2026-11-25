@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#8E2236">
-<meta name="description" content="Gestionale per campagne di D&D 5e: scheda, PF, inventario, magie, missioni, diario, dadi e iniziativa.">
+<meta name="description" content="Gestionale per campagne di giochi di ruolo fantasy, compatibile con la 5ª edizione: scheda, PF, inventario, magie, missioni, diario, dadi e iniziativa.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -15,6 +15,7 @@
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 <script>window.FIREBASE_CONFIG = {"apiKey": "AIzaSyBkyXqgK9ObPcN0F67NN121x6zIxwtv-UU", "authDomain": "taccuino-99e0e.firebaseapp.com", "projectId": "taccuino-99e0e", "storageBucket": "taccuino-99e0e.firebasestorage.app", "messagingSenderId": "363597758388", "appId": "1:363597758388:web:8e31ebd2223f625ebe3ce1"};</script>
 <script>window.ACCESS = {"salt": "aae34f0ea65ded0e", "hash": "fb1f903fa08c430906ac265a32c8e5a6879ebe2ec240c8ae52967120ac60ae0b"};</script>
+<script>window.GLOBALE = true;</script>
 </head>
 <body>
 <title>Taccuino dell'Avventuriero</title>
@@ -378,6 +379,11 @@ const LIB_TABS=["home","libro","bestiario","regole"];
 TAB_IC.libro="📚";TAB_IC.bestiario="👹";
 
 
+/* ============ edizione globale ============
+   Spenta di default. Si accende solo con "python3 build_pwa.py --globale" (inietta window.GLOBALE=true):
+   nessun marchio di terzi, solo razze/sottoclassi/background SRD 5.1 (il resto si scrive con "Altro"),
+   import "contenuti homebrew" con condizioni d'uso, attribuzione SRD completa. */
+const GLOBALE=!!window.GLOBALE,G=(a,b)=>GLOBALE?b:a;
 /* ============ dati del Manuale del Giocatore (5e) ============ */
 const RACES=["Dragonide","Elfo alto","Elfo dei boschi","Elfo oscuro (Drow)","Gnomo delle foreste","Gnomo delle rocce","Halfling piedelesto","Halfling tozzo","Mezzelfo","Mezzorco","Nano delle colline","Nano delle montagne","Tiefling","Umano"];
 const CLASS_DATA={
@@ -408,6 +414,10 @@ const CLASS_THEME={
   Stregone:{c:"#C9383A",d:"#561212",ic:"🔥",motto:"La magia scorre nel mio sangue"},
   Warlock:{c:"#7E43BA",d:"#2F1450",ic:"👁️",motto:"Un patto, un prezzo"},
 };
+if(GLOBALE){const SRD_SUBS=["Cammino del Berserker","Collegio della Sapienza","Dominio della Vita","Campione","Furfante","Scuola di Invocazione","Via della Mano Aperta","Giuramento di Devozione","Cacciatore","Discendenza Draconica","L'Immondo"],
+  SRD_RACES=["Dragonide","Elfo alto","Gnomo delle rocce","Halfling piedelesto","Mezzelfo","Mezzorco","Nano delle colline","Tiefling","Umano"];
+  for(const k in CLASS_DATA){const d=CLASS_DATA[k];d.subs=d.subs.filter(n=>SRD_SUBS.includes(n)||n.startsWith("Circolo della Terra"))}
+  RACES.splice(0,RACES.length,...RACES.filter(r=>SRD_RACES.includes(r)))}
 /* classi, sottoclassi e razze aggiuntive arrivano dai manuali importati (campi classes/subclasses/races del ddf-pack) */
 const CLASSES=["Bardo","Chierico","Druido","Mago","Paladino","Ranger","Stregone","Warlock"];
 const CLASS_BASE=JSON.parse(JSON.stringify(CLASS_DATA)),RACES_BASE=RACES.slice(),THEME_BASE={...CLASS_THEME},SPELLCLS_BASE=["Bardo","Chierico","Druido","Mago","Paladino","Ranger","Stregone","Warlock"];
@@ -432,10 +442,10 @@ function packsGameData(){
 /* testo del manuale per razza, classe o sottoclasse scelta (se importato) */
 function rulesFor(name){const n=nrm(name||"").trim();if(!n||!PACKRULES.length)return [];
   return PACKRULES.filter(r=>nrm(r.n)===n||nrm(r.g).split(" · ").includes(n)||nrm(r.g)===n)}
-const rulesBtn=(name,lbl)=>rulesFor(name).length?`<button class="btn sm ghost" data-a="rules-for" data-v="${esc(name)}" title="Leggi dal manuale" aria-label="${esc(lbl)}: leggi dal manuale">📖</button>`:"";
+const rulesBtn=(name,lbl)=>rulesFor(name).length?`<button class="btn sm ghost" data-a="rules-for" data-v="${esc(name)}" title="${G("Leggi dal manuale","Leggi i dettagli")}" aria-label="${esc(lbl)}: ${G("leggi dal manuale","leggi i dettagli")}">📖</button>`:"";
 const clsTheme=c=>CLASS_THEME[c&&c.cls]||{c:"#B08A3E",d:"#4A3818",ic:"🧝",motto:""};
 const clsVars=c=>{const t=clsTheme(c);return `--cc:${t.c};--cd:${t.d}`};
-const BACKGROUNDS=["Accolito","Artigiano di Gilda","Artista","Ciarlatano","Criminale","Eremita","Eroe Popolare","Forestiero","Marinaio","Monello","Nobile","Sapiente","Soldato"];
+const BACKGROUNDS=["Accolito","Artigiano di Gilda","Artista","Ciarlatano","Criminale","Eremita","Eroe Popolare","Forestiero","Marinaio","Monello","Nobile","Sapiente","Soldato"];if(GLOBALE)BACKGROUNDS.splice(1);
 const ALIGNMENTS=["Legale Buono","Neutrale Buono","Caotico Buono","Legale Neutrale","Neutrale","Caotico Neutrale","Legale Malvagio","Neutrale Malvagio","Caotico Malvagio"];
 function choice(path,opts){
   const v=getv(path)||"";const custom=(v&&!opts.includes(v))||UI.custom.has(path);
@@ -875,7 +885,7 @@ function vScheda(){
     <div class="card-h"><h2>Identità</h2><div class="row"><span class="tag">Bonus competenza <b data-live="pb">${sgn(pb(c))}</b></span><button class="btn pri sm" data-a="levelup" ${c.level>=20?"disabled":""}>⬆ Sali di livello</button></div></div>
     <div class="fields">
       ${fld("Nome",inp("c.name"))}${fld("Giocatore",inp("c.player"))}${fld("Razza",choice("c.race",RACES)+rulesBtn(c.race,"Razza"))}${fld("Classe",choice("c.cls",Object.keys(CLASS_DATA))+rulesBtn(c.cls,"Classe"))}
-      ${CLASS_DATA[c.cls]?fld(CLASS_DATA[c.cls].sub,choice("c.subclass",CLASS_DATA[c.cls].subs)+rulesBtn(c.subclass,"Sottoclasse")):fld("Sottoclasse",inp("c.subclass"))}${fld("Livello",inp("c.level",{attrs:'min="1" max="20"'}))}${fld("Background",choice("c.background",BACKGROUNDS))}${fld("Allineamento",choice("c.alignment",ALIGNMENTS))}${fld("Divinità",inp("c.deity",{ph:"es. Tyr, Selûne, nessuna",attrs:'autocomplete="off"'}))}
+      ${CLASS_DATA[c.cls]?fld(CLASS_DATA[c.cls].sub,choice("c.subclass",CLASS_DATA[c.cls].subs)+rulesBtn(c.subclass,"Sottoclasse")):fld("Sottoclasse",inp("c.subclass"))}${fld("Livello",inp("c.level",{attrs:'min="1" max="20"'}))}${fld("Background",choice("c.background",BACKGROUNDS))}${fld("Allineamento",choice("c.alignment",ALIGNMENTS))}${fld("Divinità",inp("c.deity",{ph:G("es. Tyr, Selûne, nessuna","es. il dio del sole, nessuna"),attrs:'autocomplete="off"'}))}
       ${fld("Punti esperienza",inp("c.xp"))}${fld("Dado vita",sel("c.hitDie",[[6,"d6"],[8,"d8"],[10,"d10"],[12,"d12"]],{num:1}))}
     </div>
   </section>
@@ -1037,7 +1047,7 @@ function vCompendio(){
     </div>
     <div class="row"><label class="row" style="gap:6px;font-size:.85rem"><input type="checkbox" id="comp-conc" ${f.conc?"checked":""}> Concentrazione</label><label class="row" style="gap:6px;font-size:.85rem"><input type="checkbox" id="comp-rit" ${f.rit?"checked":""}> Rituale</label><button class="btn sm pri" data-a="comp-refresh" title="Applica i filtri">⟳ Aggiorna</button><button class="btn sm ghost" data-a="comp-reset">Azzera filtri</button></div>
     <div id="comp-results">${compResults()}</div>
-    <p class="muted" style="margin:0;font-size:.72rem">Contiene materiale tratto dal System Reference Document 5.1 di Wizards of the Coast LLC, con licenza CC-BY-4.0, tradotto in italiano. Distanze convertite in metri.</p>
+    <p class="muted" style="margin:0;font-size:.72rem">Contiene materiale tratto dal System Reference Document 5.1 di Wizards of the Coast LLC, con licenza CC-BY-4.0, tradotto in italiano. Distanze convertite in metri.${G("",` <button class="btn sm ghost" data-a="tos">Crediti e licenza</button>`)}</p>
   </section>`;
 }
 function compResults(){
@@ -1113,7 +1123,7 @@ function vHome(){
       ${(e.pg||[]).length?`<div class="muted" style="font-size:.85rem">${esc(e.pg.join(", "))}</div>`:""}
       <div class="row"><button class="btn pri" data-a="open-online" data-v="${esc(e.code)}">Apri la campagna</button></div></section>`).join("")}
     <section class="card"><h2 style="margin:0">Biblioteca</h2><p class="muted" style="margin:0">Da consultare quando vuoi, senza aprire un personaggio.</p>
-      <div class="lib"><button class="lib-b" data-a="tab" data-v="libro"><span aria-hidden="true">🔮</span><b>Manuale degli incantesimi</b><small>${SPELLDB?SPELLDB.length:319} incantesimi in italiano</small></button><button class="lib-b" data-a="tab" data-v="bestiario"><span aria-hidden="true">👹</span><b>Bestiario</b><small>${MONDB?MONDB.length:334} mostri${PACKS.length?"":" del manuale base"}</small></button>${PACKRULES.length?`<button class="lib-b" data-a="tab" data-v="regole"><span aria-hidden="true">📖</span><b>Regole e opzioni</b><small>Sottoclassi, razze, talenti e altro: ${PACKRULES.length} sezioni</small></button>`:""}</div>${packsBox()}</section>`;
+      <div class="lib"><button class="lib-b" data-a="tab" data-v="libro"><span aria-hidden="true">🔮</span><b>Manuale degli incantesimi</b><small>${SPELLDB?SPELLDB.length:319} incantesimi in italiano</small></button><button class="lib-b" data-a="tab" data-v="bestiario"><span aria-hidden="true">👹</span><b>Bestiario</b><small>${MONDB?MONDB.length:334} mostri${PACKS.length?"":G(" del manuale base"," SRD 5.1")}</small></button>${PACKRULES.length?`<button class="lib-b" data-a="tab" data-v="regole"><span aria-hidden="true">📖</span><b>Regole e opzioni</b><small>Sottoclassi, razze, talenti e altro: ${PACKRULES.length} sezioni</small></button>`:""}</div>${packsBox()}</section>`;
 }
 
 /* ---- Master ---- */
@@ -1257,14 +1267,14 @@ async function packsLoad(){let L=[];try{L=await packTx("readonly",st=>st.getAll(
   const B=await packsBuiltin();const ids=new Set(L.map(p=>p.id));PACKS=L.concat(B.filter(p=>!ids.has(p.id))).sort((a,b)=>(a.name||"").localeCompare(b.name||""));if(PACKS.length)packsApply()}
 const isPack=d=>d&&d.kind==="ddf-pack"&&d.id&&["monsters","spells","rules","classes","subclasses","races"].some(k=>Array.isArray(d[k]));
 async function importPacks(list){let n=0;for(const d of list){const p={id:String(d.id),name:String(d.name||d.id),monsters:d.monsters||[],spells:d.spells||[],rules:Array.isArray(d.rules)?d.rules:[],classes:Array.isArray(d.classes)?d.classes:[],subclasses:Array.isArray(d.subclasses)?d.subclasses:[],races:Array.isArray(d.races)?d.races:[],importedAt:Date.now()};try{await packTx("readwrite",st=>st.put(p));PACKS=PACKS.filter(x=>x.id!==p.id).concat(p);n++}catch(e){toast("Non riesco a salvare il manuale su questo dispositivo (spazio pieno?).");return}}
-  if(n){packsApply();const p=list[list.length-1];toast(n>1?`Importati ${n} manuali: <b>${list.map(x=>esc(x.name||x.id)).join(", ")}</b>. Restano solo su questo dispositivo.`:`Manuale importato: <b>${esc(p.name||p.id)}</b> (${packCounts(p)}). Resta solo su questo dispositivo.`,6000)}}
+  if(n){packsApply();const p=list[list.length-1];toast(n>1?`Importati ${n} ${G("manuali","pacchetti homebrew")}: <b>${list.map(x=>esc(x.name||x.id)).join(", ")}</b>. Restano solo su questo dispositivo.`:`${G("Manuale importato","Contenuti homebrew importati")}: <b>${esc(p.name||p.id)}</b> (${packCounts(p)}). Resta solo su questo dispositivo.`,6000)}}
 /* ============ memoria usata ============ */
 const MB=1048576,LS_LIM=5e6,FB_LIM=MB,PRIV_LIM=250000;
 const u8=s=>new Blob([s]).size;
 const fmtB=b=>b>=MB?(b/MB).toFixed(b>=10*MB?0:1).replace(".",",")+" MB":b>=1024?Math.round(b/1024)+" KB":b+" B";
 function memItems(){const L=[];const st=JSON.stringify(S);
   L.push({n:"Dati dell'app su questo dispositivo",d:"campagne, schede, bestiario, appunti",u:st.length*2,l:LS_LIM*2});
-  if(PACKS.length)L.push({n:"Manuali importati",d:PACKS.map(p=>p.name).join(", "),u:PACKS.reduce((a,p)=>a+u8(JSON.stringify(p)),0),l:0});
+  if(PACKS.length)L.push({n:G("Manuali importati","Contenuti homebrew"),d:PACKS.map(p=>p.name).join(", "),u:PACKS.reduce((a,p)=>a+u8(JSON.stringify(p)),0),l:0});
   for(const k of S.campaigns){const code=shareCode(k);
     if(COL)L.push({n:"Cloud · "+k.name,d:"salvataggio nel tuo account",u:JSON.stringify(k).length,l:PRIV_LIM});
     if(code){L.push({n:"Online · "+k.name,d:"dati comuni della campagna",u:u8(campCore(k)),l:FB_LIM});
@@ -1276,11 +1286,27 @@ async function memDevice(){try{if(!navigator.storage||!navigator.storage.estimat
 let memWarned={};
 function memCheck(){clearTimeout(memCheck.t);memCheck.t=setTimeout(async()=>{const L=memItems();const d=await memDevice();if(d)L.push(d);
   const hot=L.filter(i=>memPct(i)>=.9&&!memWarned[i.n]);if(!hot.length)return;hot.forEach(i=>memWarned[i.n]=1);const i=hot[0];
-  toast(`⚠️ Memoria quasi piena: <b>${esc(i.n)}</b> usa ${fmtB(i.u)} di ${fmtB(i.l)} (${Math.round(memPct(i)*100)}%). Fai un backup e alleggerisci (es. rimuovi un manuale o vecchie voci del diario).`,9000)},3000)}
+  toast(`⚠️ Memoria quasi piena: <b>${esc(i.n)}</b> usa ${fmtB(i.u)} di ${fmtB(i.l)} (${Math.round(memPct(i)*100)}%). Fai un backup e alleggerisci (es. rimuovi ${G("un manuale","dei contenuti homebrew")} o vecchie voci del diario).`,9000)},3000)}
 function packCounts(p){return [(p.monsters||[]).length?p.monsters.length+" mostri":"",(p.spells||[]).length?p.spells.length+" incantesimi":"",(p.rules||[]).length?p.rules.length+" sezioni di regole":"",(p.classes||[]).length?p.classes.length+(p.classes.length>1?" classi":" classe"):"",(p.subclasses||[]).length?p.subclasses.length+" sottoclassi":"",(p.races||[]).length?p.races.length+" razze":""].filter(Boolean).join(", ")}
-function packsBox(){return `<div class="packs"><div class="card-h" style="margin:0"><b>I miei manuali</b><button class="btn sm" data-a="pack-import">Importa manuale</button></div>
+/* condizioni d'uso e crediti (solo edizione globale) */
+const tosOk=()=>{try{return localStorage.getItem("ddf-tos")==="1"}catch(e){return false}};
+function tosModal(imp){modal(`<h2>Condizioni d'uso e crediti</h2><div style="max-height:60vh;overflow:auto;font-size:.85rem;display:grid;gap:8px">
+  <p style="margin:0">Il Taccuino dell'Avventuriero è uno strumento per gestire partite di giochi di ruolo fantasy <b>compatibili con la 5ª edizione</b>. È un prodotto indipendente: non è affiliato, approvato o sponsorizzato da Wizards of the Coast.</p>
+  <h3 style="margin:4px 0 0">Contenuti homebrew</h3>
+  <p style="margin:0">Puoi importare solo contenuti <b>creati da te</b> o che hai il <b>diritto di usare</b> (per esempio con licenza libera come CC-BY-4.0, citandone l'autore). <b>È vietato caricare testi, tabelle o immagini protetti da copyright</b>, come quelli di manuali, avventure o altri prodotti commerciali, senza il permesso del titolare dei diritti.</p>
+  <p style="margin:0">I contenuti homebrew restano solo sul tuo dispositivo: non vengono caricati online né condivisi con altri. Sei responsabile di ciò che importi.</p>
+  <h3 style="margin:4px 0 0">Campagne online</h3>
+  <p style="margin:0">Nelle campagne condivise non inserire materiale protetto né dati personali di altre persone senza il loro consenso. Le campagne che violano queste condizioni possono essere rimosse.</p>
+  <h3 style="margin:4px 0 0">Garanzia</h3>
+  <p style="margin:0">L'app è fornita così com'è, senza garanzie. Fai un backup dei tuoi dati ogni tanto.</p>
+  <h3 style="margin:4px 0 0">Crediti e licenza SRD 5.1</h3>
+  <p style="margin:0">Il compendio degli incantesimi, il bestiario e i dati di classi e razze includono materiale tratto dal System Reference Document 5.1 (“SRD 5.1”) di Wizards of the Coast LLC, disponibile su <a href="https://dnd.wizards.com/resources/systems-reference-document" target="_blank" rel="noopener">dnd.wizards.com/resources/systems-reference-document</a>. L'SRD 5.1 è concesso in licenza <a href="https://creativecommons.org/licenses/by/4.0/legalcode.it" target="_blank" rel="noopener">Creative Commons Attribuzione 4.0 Internazionale (CC-BY-4.0)</a>. Modifiche: testi tradotti in italiano, distanze convertite in metri, dati riorganizzati e riassunti.</p>
+  <p style="margin:0" lang="en">This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at <a href="https://dnd.wizards.com/resources/systems-reference-document" target="_blank" rel="noopener">https://dnd.wizards.com/resources/systems-reference-document</a>. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at <a href="https://creativecommons.org/licenses/by/4.0/legalcode" target="_blank" rel="noopener">https://creativecommons.org/licenses/by/4.0/legalcode</a>.</p></div>
+  ${imp?`<label style="display:flex;gap:8px;align-items:flex-start;font-size:.9rem"><input type="checkbox" id="tos-ck" style="width:auto;margin:0"><span>Ho letto e accetto: importo solo contenuti miei o che ho il diritto di usare.</span></label>
+  <div class="row"><button class="btn pri" data-a="tos-ok">Accetto e importa</button><button class="btn ghost" data-a="modal-close">Annulla</button></div>`:`<div><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`}`)}
+function packsBox(){return `<div class="packs"><div class="card-h" style="margin:0"><b>${G("I miei manuali","Contenuti homebrew")}</b><button class="btn sm" data-a="pack-import">${G("Importa manuale","Importa contenuti")}</button></div>
   ${PACKS.length?PACKS.map(p=>`<div class="row" style="justify-content:space-between"><span>📦 <b>${esc(p.name)}</b> <small class="muted">${packCounts(p)}</small></span><button class="btn sm ghost" data-a="pack-del" data-id="${esc(p.id)}" aria-label="Rimuovi ${esc(p.name)}" ${p.builtin?"hidden":""}>✕</button></div>`).join(""):""}
-  <p class="muted" style="margin:0;font-size:.75rem">Puoi aggiungere i contenuti dei tuoi manuali da un file del Taccuino. Restano solo su questo dispositivo: non vengono caricati online né condivisi con i giocatori.</p></div>`}
+  <p class="muted" style="margin:0;font-size:.75rem">${G("Puoi aggiungere i contenuti dei tuoi manuali da un file del Taccuino. Restano solo su questo dispositivo: non vengono caricati online né condivisi con i giocatori.",`Aggiungi razze, sottoclassi, mostri, incantesimi e regole creati da te (o con licenza libera) da un file del Taccuino. Restano solo su questo dispositivo. È vietato caricare materiale protetto da copyright: <button class="btn sm ghost" data-a="tos">condizioni d'uso</button>`)}</p></div>`}
 function refreshMonLists(){const a=document.getElementById("mcmd-res");if(a&&UI.mq)a.innerHTML=cmdResults(UI.mq);const b=document.getElementById("mp-res");if(b)b.innerHTML=presetResults()}
 function rerenderMaster(){const y=window.scrollY;renderView();window.scrollTo(0,y)}
 const BASE_BY=Object.fromEntries(MON_BASE.map(m=>[nrm(m.name),m]));
@@ -1325,7 +1351,7 @@ function cmdResults(q){q=q.trim();
   const rules=RULES.map(r=>({r,s:has(r.t)?3:has(r.t+" "+r.k)?2:has(r.t+" "+r.k+" "+r.x)?1:0})).filter(x=>x.s).sort((a,b)=>b.s-a.s).slice(0,6);
   if(rules.length)out.push(`<div class="mres"><span class="lbl">Regole</span>${rules.map(({r})=>`<details class="it"><summary><span class="t">📜 ${esc(r.t)}</span></summary><div class="body mtext">${esc(r.x)}</div></details>`).join("")}</div>`);
   const pr=rulesSearch(q,"","").slice(0,5);
-  if(pr.length)out.push(`<div class="mres"><span class="lbl">Dai tuoi manuali</span>${pr.map(r=>ruleItem(r,false)).join("")}</div>`);
+  if(pr.length)out.push(`<div class="mres"><span class="lbl">${G("Dai tuoi manuali","Dai tuoi contenuti homebrew")}</span>${pr.map(r=>ruleItem(r,false)).join("")}</div>`);
   if(!SPELLDB)loadSpells();else{const sp=SPELLDB.filter(o=>has(o.n+" "+(o.en||""))).slice(0,5);
     if(sp.length)out.push(`<div class="mres"><span class="lbl">Incantesimi</span>${sp.map(o=>{const v=dbView(o);return `<details class="it"><summary><span class="t">🔮 ${esc(v.name)} <small class="muted">${v.level?v.level+"° liv.":"trucchetto"} · ${esc(v.school)}</small></span></summary><div class="body"><div class="muted" style="font-size:.82rem">${esc([v.time,v.range,v.comp,v.duration+(v.conc?" (concentrazione)":"")].join(" · "))}</div><div class="mtext">${esc(v.desc)}</div>${v.higher?`<div class="mtext"><b>Ai livelli superiori.</b> ${esc(v.higher)}</div>`:""}</div></details>`}).join("")}</div>`)}
   if(!MONDB)loadMons();
@@ -1353,16 +1379,16 @@ function rulesResults(){const L=rulesSearch(UI.rlq||"",UI.rlsrc||"",UI.rlcap||""
   return `<div class="muted" style="font-size:.8rem">${L.length} sezioni</div>`+L.slice(0,n).map(r=>ruleItem(r,false)).join("")+(L.length>n?`<button class="btn sm ghost" data-a="rl-more">Mostra altre (${L.length-n})</button>`:"")}
 function vRulesLib(){const srcs=PACKS.filter(p=>(p.rules||[]).length).map(p=>p.name);const caps=[...new Set(PACKRULES.filter(r=>!UI.rlsrc||r.fo===UI.rlsrc).map(r=>r.c))];
   if(UI.rlcap&&!caps.includes(UI.rlcap))UI.rlcap="";
-  return `<section class="card"><h2>Regole e opzioni</h2><p class="muted" style="margin:0;font-size:.85rem">Le sezioni dei tuoi manuali: sottoclassi, razze, talenti, background, regole e strumenti per il Master. Testi ricavati dalla scansione dei manuali, quindi può esserci qualche refuso. Restano solo su questo dispositivo.</p>
-    <div class="row"><input id="rl-q" placeholder="Cerca: talenti, mezzorco, Collegio della Spada…" value="${esc(UI.rlq||"")}" style="flex:1 1 180px" autocomplete="off">
-    <select id="rl-src" aria-label="Manuale"><option value="">Tutti i manuali</option>${srcs.map(n=>`<option ${UI.rlsrc===n?"selected":""}>${esc(n)}</option>`).join("")}</select>
+  return `<section class="card"><h2>Regole e opzioni</h2><p class="muted" style="margin:0;font-size:.85rem">${G("Le sezioni dei tuoi manuali: sottoclassi, razze, talenti, background, regole e strumenti per il Master. Testi ricavati dalla scansione dei manuali, quindi può esserci qualche refuso. Restano solo su questo dispositivo.","Le sezioni dei tuoi contenuti homebrew: sottoclassi, razze, talenti, background, regole e strumenti per il Master. Restano solo su questo dispositivo.")}</p>
+    <div class="row"><input id="rl-q" placeholder="${G("Cerca: talenti, mezzorco, Collegio della Spada…","Cerca: talenti, razze, sottoclassi…")}" value="${esc(UI.rlq||"")}" style="flex:1 1 180px" autocomplete="off">
+    <select id="rl-src" aria-label="${G("Manuale","Fonte")}"><option value="">${G("Tutti i manuali","Tutte le fonti")}</option>${srcs.map(n=>`<option ${UI.rlsrc===n?"selected":""}>${esc(n)}</option>`).join("")}</select>
     <select id="rl-cap" aria-label="Capitolo"><option value="">Tutti i capitoli</option>${caps.map(c=>`<option ${UI.rlcap===c?"selected":""}>${esc(c)}</option>`).join("")}</select></div>
     <div class="list" id="rl-res">${rulesResults()}</div></section>`}
 function vBestiaryLib(){const crs=[["","Tutti i GS"],["0","GS 0"],["0.125","GS 1/8"],["0.25","GS 1/4"],["0.5","GS 1/2"],["1","GS 1"],["2-4","GS 2–4"],["h","GS 5+"]];
-  return `<section class="card"><h2>Bestiario</h2><p class="muted" style="margin:0;font-size:.85rem">I mostri del manuale base (SRD 5.1)${PACKS.some(p=>(p.monsters||[]).length)?" e dei tuoi manuali":""}. Tocca un nome per la scheda completa.</p>
+  return `<section class="card"><h2>Bestiario</h2><p class="muted" style="margin:0;font-size:.85rem">I mostri del manuale base (SRD 5.1)${PACKS.some(p=>(p.monsters||[]).length)?G(" e dei tuoi manuali"," e dei tuoi contenuti homebrew"):""}. Tocca un nome per la scheda completa.</p>
     <div class="row"><input id="mp-q" placeholder="Cerca: goblin, drago, scheletro…" value="${esc(UI.mpq||"")}" style="flex:1 1 180px" autocomplete="off"><select id="mp-cr" aria-label="Grado di sfida">${crs.map(([v,l])=>`<option value="${v}" ${(UI.mpcr||"")===v?"selected":""}>${l}</option>`).join("")}</select>${PACKS.length?`<select id="mp-src" aria-label="Fonte"><option value="">Tutte le fonti</option><option value="srd" ${UI.mpsrc==="srd"?"selected":""}>Manuale base (SRD)</option>${PACKS.map(p=>`<option ${UI.mpsrc===p.name?"selected":""}>${esc(p.name)}</option>`).join("")}</select>`:""}</div>
     <div class="list" id="mp-res">${presetResults()}</div>
-    <p class="muted" style="margin:0;font-size:.72rem">Dati da System Reference Document 5.1, Wizards of the Coast, licenza CC-BY-4.0. Tradotti in italiano, distanze in metri.</p></section>`}
+    <p class="muted" style="margin:0;font-size:.72rem">Dati da System Reference Document 5.1, Wizards of the Coast, licenza CC-BY-4.0. Tradotti in italiano, distanze in metri.${G("",` <button class="btn sm ghost" data-a="tos">Crediti e licenza</button>`)}</p></section>`}
 function vEncounter(){const k=camp();const B=k.master.bestiary;
   const crs=[["","Tutti i GS"],["0","GS 0"],["0.125","GS 1/8"],["0.25","GS 1/4"],["0.5","GS 1/2"],["1","GS 1"],["2-4","GS 2–4"],["h","GS 5+"]];
   return vCombat(true)+`<section class="card"><div class="card-h"><h2>Il mio bestiario</h2><button class="btn sm" data-a="mb-new">+ Nuovo mostro</button></div>
@@ -1379,7 +1405,7 @@ function vEncounter(){const k=camp();const B=k.master.bestiary;
     <p class="muted" style="margin:0;font-size:.85rem">334 mostri del manuale base (SRD 5.1). Tocca un nome per la scheda, ☆ per salvarlo nel bestiario e personalizzarlo, + ⚔ per metterlo subito in combattimento.</p>
     <div class="row"><input id="mp-q" placeholder="Cerca: goblin, drago, scheletro…" value="${esc(UI.mpq||"")}" style="flex:1 1 180px" autocomplete="off"><select id="mp-cr" aria-label="Grado di sfida">${crs.map(([v,l])=>`<option value="${v}" ${(UI.mpcr||"")===v?"selected":""}>${l}</option>`).join("")}</select>${PACKS.length?`<select id="mp-src" aria-label="Fonte"><option value="">Tutte le fonti</option><option value="srd" ${UI.mpsrc==="srd"?"selected":""}>Manuale base (SRD)</option>${PACKS.map(p=>`<option ${UI.mpsrc===p.name?"selected":""}>${esc(p.name)}</option>`).join("")}</select>`:""}</div>
     <div class="list" id="mp-res">${presetResults()}</div>
-    <p class="muted" style="margin:0;font-size:.72rem">Dati dei mostri da System Reference Document 5.1, Wizards of the Coast, licenza CC-BY-4.0. Tradotti in italiano, distanze in metri.</p></section>`}
+    <p class="muted" style="margin:0;font-size:.72rem">Dati dei mostri da System Reference Document 5.1, Wizards of the Coast, licenza CC-BY-4.0. Tradotti in italiano, distanze in metri.${G("",` <button class="btn sm ghost" data-a="tos">Crediti e licenza</button>`)}</p></section>`}
 document.addEventListener("change",e=>{if(e.target.id==="rl-src"||e.target.id==="rl-cap"){UI[e.target.id==="rl-src"?"rlsrc":"rlcap"]=e.target.value;UI.rllim=40;renderView();return}if(e.target.id==="mp-cr"||e.target.id==="mp-src"){UI[e.target.id==="mp-cr"?"mpcr":"mpsrc"]=e.target.value;const r=$("#mp-res");if(r)r.innerHTML=presetResults()}});
 
 /* ambienti */
@@ -1632,7 +1658,9 @@ const A={
   "ms-open":b=>{const k=camp();k.activeChar=b.dataset.id;UI.tab="scheda";window.scrollTo(0,0)},
   "ms-del":b=>{const k=camp();const c=k.chars.find(x=>x.id===b.dataset.id);confirmBox(shareCode(k)?`Eliminare <b>${esc(c.name)}</b> dalla campagna condivisa? Sparisce per tutti.`:`Togliere <b>${esc(c.name)}</b> da questa campagna? Il giocatore conserva la sua scheda sul suo telefono.`,"Togli",()=>{k.chars=k.chars.filter(x=>x.id!==c.id);k.combat.list=k.combat.list.filter(e=>e.charId!==c.id);if(k.activeChar===c.id)k.activeChar=k.chars[0]?k.chars[0].id:null});return "noRender"},
   "ms-import":()=>{$("#file-char").click();return "noRender"},
-  "pack-import":()=>{$("#file-pack").click();return "noRender"},
+  "pack-import":()=>{if(GLOBALE&&!tosOk()){tosModal(true);return "noRender"}$("#file-pack").click();return "noRender"},
+  "tos":()=>{tosModal(false);return "noRender"},
+  "tos-ok":()=>{if(!$("#tos-ck").checked){toast("Spunta la casella per accettare le condizioni d'uso.");return "noRender"}try{localStorage.setItem("ddf-tos","1")}catch(e){}closeModal();$("#file-pack").click();return "noRender"},
   "pack-del":b=>{const p=PACKS.find(x=>x.id===b.dataset.id);if(!p)return "noRender";confirmBox(`Rimuovere <b>${esc(p.name)}</b> da questo dispositivo? I mostri già salvati nel tuo bestiario restano.`,"Rimuovi",()=>{packTx("readwrite",st=>st.delete(p.id)).catch(()=>{});PACKS=PACKS.filter(x=>x!==p);if(UI.mpsrc===p.name)UI.mpsrc="";packsApply()});return "noRender"},
   "send-char":()=>{sendChar();return "noRender"},
   "share-camp":()=>{shareCamp();return "noRender"},
@@ -1649,7 +1677,7 @@ const A={
     ${fbEnabled()?`<div class="f"><span class="lbl">Online</span><div class="row"><button class="btn pri" data-a="share-camp">${shareCode(camp())?"Codice della campagna":"Condividi campagna online"}</button><button class="btn" data-a="join">Entra con un codice</button></div></div>`:""}
     <div class="f"><span class="lbl">Backup</span><div class="row"><button class="btn" data-a="export">Esporta tutto (JSON)</button><button class="btn" data-a="import">Importa backup</button></div>
     <p class="muted" style="margin:0;font-size:.8rem">I dati si salvano da soli. Esporta un backup ogni tanto, o per passare la scheda a un amico.</p></div>
-    <div><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
+    <div class="row"><button class="btn ghost" data-a="modal-close">Chiudi</button>${GLOBALE?`<button class="btn ghost" data-a="tos">Condizioni d'uso e crediti</button>`:""}</div>`);return "noRender"},
   "new-char":()=>{modal(`<h2>Nuovo personaggio</h2><input id="nc-name" placeholder="Nome del personaggio"><div class="row"><button class="btn pri" data-a="nc-ok">Crea</button><button class="btn ghost" data-a="modal-close">Annulla</button></div>`);return "noRender"},
   "nc-ok":()=>{const k=camp();const c=newChar($("#nc-name").value.trim()||"Nuovo eroe");k.chars.push(c);k.activeChar=c.id;closeModal();UI.tab="scheda"},
   "mv-char":()=>{const c=ch(),k=camp();if(!c)return "noRender";const others=S.campaigns.filter(x=>x.id!==k.id);
@@ -1812,7 +1840,7 @@ Object.assign(A,{
     const o=SPELLDB?SPELLDB.find(x=>x.i===b.dataset.i):null;const mine=b.dataset.mine?ch().spells.find(x=>x.id===b.dataset.mine):null;
     const src=o?{n:o.n,x:o.x,h:o.h||""}:mine?{n:mine.name,x:mine.desc,h:mine.higher||""}:null;if(!src)return;
     b.disabled=true;b.textContent="Traduco…";
-    try{const r=await sm.json([{role:"user",content:`Traduci in italiano questo incantesimo di Dungeons & Dragons 5a edizione. Usa il nome ufficiale italiano dell'incantesimo e i termini di gioco ufficiali italiani (tiro salvezza, azione bonus, punti ferita, ecc.). Converti piedi in metri (5 piedi = 1,5 m) e miglia in km. Rispondi solo con un oggetto JSON {"n": nome, "x": descrizione, "h": testo ai livelli superiori o stringa vuota}. Mantieni i paragrafi separati da una riga vuota.\n\n${JSON.stringify(src)}`}],{modelTier:"quick"});
+    try{const r=await sm.json([{role:"user",content:`Traduci in italiano questo incantesimo di ${G("Dungeons & Dragons 5a edizione","un gioco di ruolo fantasy compatibile con la 5ª edizione (SRD 5.1)")}. Usa il nome ufficiale italiano dell'incantesimo e i termini di gioco ufficiali italiani (tiro salvezza, azione bonus, punti ferita, ecc.). Converti piedi in metri (5 piedi = 1,5 m) e miglia in km. Rispondi solo con un oggetto JSON {"n": nome, "x": descrizione, "h": testo ai livelli superiori o stringa vuota}. Mantieni i paragrafi separati da una riga vuota.\n\n${JSON.stringify(src)}`}],{modelTier:"quick"});
       if(!r||typeof r.x!=="string")throw new Error();TR[b.dataset.i]={n:String(r.n||src.n),x:r.x,h:String(r.h||"")};ls.set("ddf-tr",JSON.stringify(TR));
       for(const k of S.campaigns)for(const c of k.chars)for(const s of c.spells)if(s.srd===b.dataset.i&&!s.tr){s.name=TR[b.dataset.i].n;s.desc=r.x;s.higher=TR[b.dataset.i].h;s.tr=true}
       touch();render();toast("Tradotto.")}
@@ -1901,7 +1929,7 @@ $("#file-char").addEventListener("change",async e=>{
 });
 $("#file-pack").addEventListener("change",async e=>{const files=[...e.target.files];e.target.value="";const ok=[];let bad=0;
   for(const f of files){try{const d=JSON.parse(await f.text());{const u=unBundle(d);if(u.length)ok.push(...u);else bad++}}catch(err){bad++}}
-  if(ok.length)importPacks(ok);if(bad)setTimeout(()=>toast(`${bad} file non ${bad>1?"sono manuali":"è un manuale"} del Taccuino.`),ok.length?5200:0)});
+  if(ok.length)importPacks(ok);if(bad)setTimeout(()=>toast(`${bad} file non ${bad>1?G("sono manuali","sono contenuti homebrew"):G("è un manuale","è un file di contenuti homebrew")} del Taccuino.`),ok.length?5200:0)});
 let pendingImport=null;
 $("#file-import").addEventListener("change",async e=>{
   const f=e.target.files[0];e.target.value="";if(!f)return;

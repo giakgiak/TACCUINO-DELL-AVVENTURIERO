@@ -1,0 +1,34 @@
+Taccuino dell'Avventuriero
+==========================
+
+1. Codice dell'applicazione
+---------------------------
+Copyright (c) 2026 giakgiak. Tutti i diritti riservati.
+
+Il codice sorgente dell'app (index.html, sw.js, manifest.webmanifest, icone)
+non può essere copiato, modificato o ridistribuito senza il permesso scritto
+dell'autore, salvo quanto previsto dalla sezione 2.
+
+2. Contenuti SRD 5.1 (spells.json, monsters.json, dati di classi e razze)
+-------------------------------------------------------------------------
+This work includes material taken from the System Reference Document 5.1
+("SRD 5.1") by Wizards of the Coast LLC and available at
+https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is
+licensed under the Creative Commons Attribution 4.0 International License
+available at https://creativecommons.org/licenses/by/4.0/legalcode.
+
+Questo lavoro include materiale tratto dal System Reference Document 5.1
+("SRD 5.1") di Wizards of the Coast LLC, disponibile su
+https://dnd.wizards.com/resources/systems-reference-document. L'SRD 5.1 è
+concesso in licenza Creative Commons Attribuzione 4.0 Internazionale
+(CC-BY-4.0): https://creativecommons.org/licenses/by/4.0/legalcode.it
+
+Modifiche apportate al materiale SRD 5.1: testi tradotti in italiano, distanze
+convertite in metri, dati riorganizzati in formato JSON e riassunti brevi.
+Le traduzioni e gli adattamenti dei contenuti SRD 5.1 sono rilasciati con la
+stessa licenza CC-BY-4.0.
+
+3. Marchi
+---------
+Il Taccuino dell'Avventuriero è un prodotto indipendente, compatibile con la
+5ª edizione. Non è affiliato, approvato o sponsorizzato da Wizards of the Coast.
