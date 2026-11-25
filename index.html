@@ -405,6 +405,31 @@ const CLASS_THEME={
   Stregone:{c:"#C9383A",d:"#561212",ic:"🔥",motto:"La magia scorre nel mio sangue"},
   Warlock:{c:"#7E43BA",d:"#2F1450",ic:"👁️",motto:"Un patto, un prezzo"},
 };
+/* classi, sottoclassi e razze aggiuntive arrivano dai manuali importati (campi classes/subclasses/races del ddf-pack) */
+const CLASSES=["Bardo","Chierico","Druido","Mago","Paladino","Ranger","Stregone","Warlock"];
+const CLASS_BASE=JSON.parse(JSON.stringify(CLASS_DATA)),RACES_BASE=RACES.slice(),THEME_BASE={...CLASS_THEME},SPELLCLS_BASE=["Bardo","Chierico","Druido","Mago","Paladino","Ranger","Stregone","Warlock"];
+let PACK_SPELLCLS={};
+function packsGameData(){
+  for(const k of Object.keys(CLASS_DATA))delete CLASS_DATA[k];Object.assign(CLASS_DATA,JSON.parse(JSON.stringify(CLASS_BASE)));
+  for(const k of Object.keys(CLASS_THEME))delete CLASS_THEME[k];Object.assign(CLASS_THEME,THEME_BASE);
+  RACES.length=0;RACES.push(...RACES_BASE);CLASSES.length=0;CLASSES.push(...SPELLCLS_BASE);PACK_SPELLCLS={};
+  const addSub=(cls,n)=>{const d=CLASS_DATA[cls];if(d&&n&&!d.subs.includes(n))d.subs.push(n)};
+  for(const p of PACKS){
+    for(const c of p.classes||[]){if(!c||!c.n)continue;const cur=CLASS_DATA[c.n];
+      CLASS_DATA[c.n]={hd:Number(c.hd)||(cur&&cur.hd)||8,saves:c.saves||(cur&&cur.saves)||[],sa:c.sa||(cur&&cur.sa),sub:c.sub||(cur&&cur.sub)||"Sottoclasse",subs:cur?cur.subs:[],caster:c.caster||(cur&&cur.caster)};
+      (c.subs||[]).forEach(n=>addSub(c.n,n));
+      if(c.theme&&!CLASS_THEME[c.n])CLASS_THEME[c.n]=c.theme;
+      if(c.sa&&!CLASSES.includes(c.n))CLASSES.push(c.n);
+      if(Array.isArray(c.spells))for(const id of c.spells)(PACK_SPELLCLS[id]=PACK_SPELLCLS[id]||new Set()).add(c.n)}
+    for(const x of p.subclasses||[])if(x)addSub(x.cls,x.n);
+    for(const r of p.races||[]){const n=typeof r==="string"?r:r&&r.n;if(n&&!RACES.includes(n))RACES.push(n)}}
+  RACES.sort((a,b)=>a.localeCompare(b,"it"));
+  const ord=Object.keys(CLASS_DATA).sort((a,b)=>a.localeCompare(b,"it")).map(k=>[k,CLASS_DATA[k]]);for(const [k] of ord)delete CLASS_DATA[k];for(const [k,v] of ord)CLASS_DATA[k]=v;
+  for(const k in CLASS_DATA){const b=CLASS_BASE[k]?CLASS_BASE[k].subs.length:0;const d=CLASS_DATA[k];d.subs=d.subs.slice(0,b).concat(d.subs.slice(b).sort((a,b)=>a.localeCompare(b,"it")))}}
+/* testo del manuale per razza, classe o sottoclasse scelta (se importato) */
+function rulesFor(name){const n=nrm(name||"").trim();if(!n||!PACKRULES.length)return [];
+  return PACKRULES.filter(r=>nrm(r.n)===n||nrm(r.g).split(" · ").includes(n)||nrm(r.g)===n)}
+const rulesBtn=(name,lbl)=>rulesFor(name).length?`<button class="btn sm ghost" data-a="rules-for" data-v="${esc(name)}" title="Leggi dal manuale" aria-label="${esc(lbl)}: leggi dal manuale">📖</button>`:"";
 const clsTheme=c=>CLASS_THEME[c&&c.cls]||{c:"#B08A3E",d:"#4A3818",ic:"🧝",motto:""};
 const clsVars=c=>{const t=clsTheme(c);return `--cc:${t.c};--cd:${t.d}`};
 const BACKGROUNDS=["Accolito","Artigiano di Gilda","Artista","Ciarlatano","Criminale","Eremita","Eroe Popolare","Forestiero","Marinaio","Monello","Nobile","Sapiente","Soldato"];
@@ -771,7 +796,7 @@ function renderVital(){
    ${tags?`<div class="chips" style="flex-basis:100%">${tags}</div>`:""}`;
 }
 function renderView(){
-  ls.set("ddf-tab",UI.tab);
+  try{sessionStorage.setItem("ddf-tab",JSON.stringify({t:UI.tab,m:UI.mode||"",v:UI.spellView}))}catch(e){}
   const k=camp(),c=ch();const v=$("#view");
   v.classList.remove("cls-themed");v.removeAttribute("style");
   if(UI.tab==="home"){v.innerHTML=vHome();return}
@@ -815,8 +840,8 @@ function vScheda(){
   <section class="card">
     <div class="card-h"><h2>Identità</h2><div class="row"><span class="tag">Bonus competenza <b data-live="pb">${sgn(pb(c))}</b></span><button class="btn pri sm" data-a="levelup" ${c.level>=20?"disabled":""}>⬆ Sali di livello</button></div></div>
     <div class="fields">
-      ${fld("Nome",inp("c.name"))}${fld("Giocatore",inp("c.player"))}${fld("Razza",choice("c.race",RACES))}${fld("Classe",choice("c.cls",Object.keys(CLASS_DATA)))}
-      ${CLASS_DATA[c.cls]?fld(CLASS_DATA[c.cls].sub,choice("c.subclass",CLASS_DATA[c.cls].subs)):fld("Sottoclasse",inp("c.subclass"))}${fld("Livello",inp("c.level",{attrs:'min="1" max="20"'}))}${fld("Background",choice("c.background",BACKGROUNDS))}${fld("Allineamento",choice("c.alignment",ALIGNMENTS))}${fld("Divinità",inp("c.deity",{ph:"es. Tyr, Selûne, nessuna",attrs:'autocomplete="off"'}))}
+      ${fld("Nome",inp("c.name"))}${fld("Giocatore",inp("c.player"))}${fld("Razza",choice("c.race",RACES)+rulesBtn(c.race,"Razza"))}${fld("Classe",choice("c.cls",Object.keys(CLASS_DATA))+rulesBtn(c.cls,"Classe"))}
+      ${CLASS_DATA[c.cls]?fld(CLASS_DATA[c.cls].sub,choice("c.subclass",CLASS_DATA[c.cls].subs)+rulesBtn(c.subclass,"Sottoclasse")):fld("Sottoclasse",inp("c.subclass"))}${fld("Livello",inp("c.level",{attrs:'min="1" max="20"'}))}${fld("Background",choice("c.background",BACKGROUNDS))}${fld("Allineamento",choice("c.alignment",ALIGNMENTS))}${fld("Divinità",inp("c.deity",{ph:"es. Tyr, Selûne, nessuna",attrs:'autocomplete="off"'}))}
       ${fld("Punti esperienza",inp("c.xp"))}${fld("Dado vita",sel("c.hitDie",[[6,"d6"],[8,"d8"],[10,"d10"],[12,"d12"]],{num:1}))}
     </div>
   </section>
@@ -928,7 +953,7 @@ function vMagie(){
   </section>
   <div class="seg" role="tablist" style="justify-self:start"><button class="${UI.spellView!=="comp"?"on":""}" data-a="sp-view" data-v="mine">I miei incantesimi (${c.spells.length})</button><button class="${UI.spellView==="comp"?"on":""}" data-a="sp-view" data-v="comp">Compendio SRD</button></div>
   ${UI.spellView==="comp"?vCompendio():`<section class="card">
-    <div class="card-h"><h2>I miei incantesimi</h2><div class="row"><label class="row" style="gap:6px;font-size:.85rem"><input type="checkbox" id="only-prep" data-a="only-prep" ${UI.onlyPrepared?"checked":""}> Solo preparati</label><button class="btn sm" data-a="sp-view" data-v="comp">Cerca nel compendio</button><button class="btn sm pri" data-a="add" data-l="spells">+ Personalizzato</button></div></div>
+    <div class="card-h"><h2>I miei incantesimi</h2><div class="row"><label class="row" style="gap:6px;font-size:.85rem"><input type="checkbox" id="only-prep" data-a="only-prep" ${UI.onlyPrepared?"checked":""}> Solo preparati</label><button class="btn sm" data-a="sp-refresh" title="Aggiorna l'elenco senza ricaricare la pagina">⟳ Aggiorna</button><button class="btn sm" data-a="sp-view" data-v="comp">Cerca nel compendio</button><button class="btn sm pri" data-a="add" data-l="spells">+ Personalizzato</button></div></div>
     ${Object.keys(byL).sort((a,b)=>a-b).map(l=>`<div class="list"><h3>${lvName(l)} ${Number(l)>0?`<span class="tag num">${c.slots[l].max-c.slots[l].used}/${c.slots[l].max} slot</span>`:""}</h3>${byL[l].map(s=>`<details class="it" data-id="${s.id}" ${isOpen(s.id)}><summary>
         ${Number(s.level)>0?`<input type="checkbox" title="Preparato" aria-label="Preparato" data-b="c.spells#${s.id}.prepared" id="${fid("c.spells#"+s.id+".prepared")}" ${s.prepared?"checked":""}>`:""}
         <span class="t tt"><span data-live="sumtitle:c.spells#${s.id}.name">${esc(s.name||"Senza nome")}</span>${s.brief?`<small>${esc(s.brief)}</small>`:""}</span>${s.conc?`<span class="tag gold">C</span>`:""}${s.ritual?`<span class="tag">R</span>`:""}
@@ -948,7 +973,6 @@ let SPELLDB=null,spellErr=false;
 const TR=(()=>{try{return JSON.parse(ls.get("ddf-tr")||"{}")}catch(e){return{}}})();
 function upgradeMySpells(){if(!SPELLDB)return;const by=Object.fromEntries(SPELLDB.map(o=>[o.i,o]));let n=0;for(const k of S.campaigns)for(const c of k.chars)for(const s of c.spells){const o=s.srd&&by[s.srd];if(!o||!o.it)continue;if(!s.tr){s.tr=true;s.name=o.n;s.desc=o.x;s.higher=o.h||"";s.material=o.m||"";n++}if(!s.brief){s.brief=o.b;n++}}if(n){S.campaigns.forEach(k=>k.updatedAt=Date.now());save()}}
 function loadSpells(){if(SPELLDB||loadSpells.p)return;loadSpells.p=fetch("spells.json").then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{SPELL_SRD=d;SPELLDB=packSpells(d);upgradeMySpells();if(UI.tab==="magie")renderView();const r=document.getElementById("mcmd-res");if(r&&UI.mq)r.innerHTML=cmdResults(UI.mq)}).catch(()=>{spellErr=true;loadSpells.p=null;if(UI.tab==="magie")renderView()})}
-const CLASSES=["Bardo","Chierico","Druido","Mago","Paladino","Ranger","Stregone","Warlock"];
 function guessClass(cls){const s=(cls||"").toLowerCase();return CLASSES.find(k=>s.includes(k.toLowerCase()))||""}
 function dbView(o){const t=o.it?{}:(TR[o.i]||{});return{brief:o.b||"",name:t.n||o.n,orig:o.en||(t.n?o.n:""),level:o.l,school:o.s,time:o.t,range:o.r,comp:o.c,material:o.m||"",duration:o.d,conc:!!o.k,ritual:!!o.ri,classes:o.cls,desc:t.x||o.x,higher:t.h||o.h||"",dmg:o.dm||"",ts:o.ts||"",dt:o.dt||"",srd:o.i,translated:!!(o.it||t.x)}}
 function mySpellView(s){return{brief:s.brief||"",name:s.name,level:s.level,school:s.school,time:s.time,range:s.range,comp:s.comp,material:s.material||"",duration:s.duration,conc:s.conc,ritual:s.ritual,classes:s.classes||[],desc:s.desc,higher:s.higher||"",dmg:s.dmg,ts:s.ts||"",srd:s.srd,translated:!!s.tr}}
@@ -1186,14 +1210,14 @@ let PACKS=[],MON_SRD=null,SPELL_SRD=null,PACKRULES=[];
 function packDB(){return new Promise((res,rej)=>{try{const r=indexedDB.open("ddf-packs",1);r.onupgradeneeded=()=>r.result.createObjectStore("packs",{keyPath:"id"});r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
 function packTx(mode,fn){return packDB().then(db=>new Promise((res,rej)=>{const t=db.transaction("packs",mode);const st=t.objectStore("packs");const q=fn(st);t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error)}))}
 const packMons=d=>d.concat(...PACKS.map(p=>(p.monsters||[]).map(o=>({...o,fo:p.name}))));
-const packSpells=d=>d.concat(...PACKS.map(p=>(p.spells||[]).map(o=>({...o,fo:p.name}))));
-function packsApply(){memCheck();PACKRULES=[].concat(...PACKS.map(p=>(p.rules||[]).map(r=>({...r,fo:p.name}))));if(MON_SRD)MONDB=packMons(MON_SRD);if(SPELL_SRD)SPELLDB=packSpells(SPELL_SRD);refreshMonLists();if(["home","libro","bestiario","master"].includes(UI.tab))renderView()}
+const packSpells=d=>d.concat(...PACKS.map(p=>(p.spells||[]).map(o=>({...o,fo:p.name})))).map(o=>{const x=PACK_SPELLCLS[o.i];return x?{...o,cls:[...new Set([...(o.cls||[]),...x])]}:o});
+function packsApply(){memCheck();packsGameData();PACKRULES=[].concat(...PACKS.map(p=>(p.rules||[]).map(r=>({...r,fo:p.name}))));if(MON_SRD)MONDB=packMons(MON_SRD);if(SPELL_SRD)SPELLDB=packSpells(SPELL_SRD);refreshMonLists();if(["home","libro","bestiario","master","scheda","magie"].includes(UI.tab))renderView()}
 const unBundle=d=>d&&d.kind==="ddf-bundle"&&Array.isArray(d.packs)?d.packs.filter(isPack):isPack(d)?[d]:[];
 async function packsBuiltin(){if(!(window.claude&&window.claude.use))return [];try{const r=await fetch("manuali.json");if(!r.ok)return [];return unBundle(await r.json()).map(p=>({...p,builtin:true}))}catch(e){return []}}
 async function packsLoad(){let L=[];try{L=await packTx("readonly",st=>st.getAll())||[]}catch(e){}
   const B=await packsBuiltin();const ids=new Set(L.map(p=>p.id));PACKS=L.concat(B.filter(p=>!ids.has(p.id))).sort((a,b)=>(a.name||"").localeCompare(b.name||""));if(PACKS.length)packsApply()}
-const isPack=d=>d&&d.kind==="ddf-pack"&&d.id&&(Array.isArray(d.monsters)||Array.isArray(d.spells)||Array.isArray(d.rules));
-async function importPacks(list){let n=0;for(const d of list){const p={id:String(d.id),name:String(d.name||d.id),monsters:d.monsters||[],spells:d.spells||[],rules:Array.isArray(d.rules)?d.rules:[],importedAt:Date.now()};try{await packTx("readwrite",st=>st.put(p));PACKS=PACKS.filter(x=>x.id!==p.id).concat(p);n++}catch(e){toast("Non riesco a salvare il manuale su questo dispositivo (spazio pieno?).");return}}
+const isPack=d=>d&&d.kind==="ddf-pack"&&d.id&&["monsters","spells","rules","classes","subclasses","races"].some(k=>Array.isArray(d[k]));
+async function importPacks(list){let n=0;for(const d of list){const p={id:String(d.id),name:String(d.name||d.id),monsters:d.monsters||[],spells:d.spells||[],rules:Array.isArray(d.rules)?d.rules:[],classes:Array.isArray(d.classes)?d.classes:[],subclasses:Array.isArray(d.subclasses)?d.subclasses:[],races:Array.isArray(d.races)?d.races:[],importedAt:Date.now()};try{await packTx("readwrite",st=>st.put(p));PACKS=PACKS.filter(x=>x.id!==p.id).concat(p);n++}catch(e){toast("Non riesco a salvare il manuale su questo dispositivo (spazio pieno?).");return}}
   if(n){packsApply();const p=list[list.length-1];toast(n>1?`Importati ${n} manuali: <b>${list.map(x=>esc(x.name||x.id)).join(", ")}</b>. Restano solo su questo dispositivo.`:`Manuale importato: <b>${esc(p.name||p.id)}</b> (${packCounts(p)}). Resta solo su questo dispositivo.`,6000)}}
 /* ============ memoria usata ============ */
 const MB=1048576,LS_LIM=5e6,FB_LIM=MB,PRIV_LIM=250000;
@@ -1214,7 +1238,7 @@ let memWarned={};
 function memCheck(){clearTimeout(memCheck.t);memCheck.t=setTimeout(async()=>{const L=memItems();const d=await memDevice();if(d)L.push(d);
   const hot=L.filter(i=>memPct(i)>=.9&&!memWarned[i.n]);if(!hot.length)return;hot.forEach(i=>memWarned[i.n]=1);const i=hot[0];
   toast(`⚠️ Memoria quasi piena: <b>${esc(i.n)}</b> usa ${fmtB(i.u)} di ${fmtB(i.l)} (${Math.round(memPct(i)*100)}%). Fai un backup e alleggerisci (es. rimuovi un manuale o vecchie voci del diario).`,9000)},3000)}
-function packCounts(p){return [(p.monsters||[]).length?p.monsters.length+" mostri":"",(p.spells||[]).length?p.spells.length+" incantesimi":"",(p.rules||[]).length?p.rules.length+" sezioni di regole":""].filter(Boolean).join(", ")}
+function packCounts(p){return [(p.monsters||[]).length?p.monsters.length+" mostri":"",(p.spells||[]).length?p.spells.length+" incantesimi":"",(p.rules||[]).length?p.rules.length+" sezioni di regole":"",(p.classes||[]).length?p.classes.length+(p.classes.length>1?" classi":" classe"):"",(p.subclasses||[]).length?p.subclasses.length+" sottoclassi":"",(p.races||[]).length?p.races.length+" razze":""].filter(Boolean).join(", ")}
 function packsBox(){return `<div class="packs"><div class="card-h" style="margin:0"><b>I miei manuali</b><button class="btn sm" data-a="pack-import">Importa manuale</button></div>
   ${PACKS.length?PACKS.map(p=>`<div class="row" style="justify-content:space-between"><span>📦 <b>${esc(p.name)}</b> <small class="muted">${packCounts(p)}</small></span><button class="btn sm ghost" data-a="pack-del" data-id="${esc(p.id)}" aria-label="Rimuovi ${esc(p.name)}" ${p.builtin?"hidden":""}>✕</button></div>`).join(""):""}
   <p class="muted" style="margin:0;font-size:.75rem">Puoi aggiungere i contenuti dei tuoi manuali da un file del Taccuino. Restano solo su questo dispositivo: non vengono caricati online né condivisi con i giocatori.</p></div>`}
@@ -1284,7 +1308,7 @@ function presetResults(){if(!MONDB&&!monErr)loadMons();const q=nrm(UI.mpq||"");c
 function rulesSearch(q,src,cap){const words=nrm(q.trim()).split(/\s+/).filter(Boolean);let L=PACKRULES.filter(r=>(!src||r.fo===src)&&(!cap||r.c===cap));
   if(!words.length)return L;const has=s=>{const n=nrm(s);return words.every(w=>n.includes(w))};
   return L.map(r=>({r,s:has(r.n)?3:has(r.g+" "+r.n)?2:has(r.x)?1:0})).filter(o=>o.s).sort((a,b)=>b.s-a.s).map(o=>o.r)}
-function ruleItem(r,open){return `<details class="it"${open?" open":""}><summary><span class="t">📖 ${esc(r.n)} <small class="muted">${esc([r.g,r.c].filter(Boolean).join(" · "))} · 📦 ${esc(r.fo)}</small></span></summary><div class="body mtext" style="white-space:normal">${esc(r.x)}</div></details>`}
+function ruleItem(r,open){return `<details class="it"${open?" open":""}><summary><span class="t">📖 ${esc(r.n)} <small class="muted">${esc([r.g,r.c].filter(Boolean).join(" · "))} · 📦 ${esc(r.fo)}</small></span></summary><div class="body mtext" style="white-space:pre-line">${esc(r.x)}</div></details>`}
 function rulesResults(){const L=rulesSearch(UI.rlq||"",UI.rlsrc||"",UI.rlcap||"");const n=UI.rllim||40;
   if(!L.length)return `<div class="muted mhint">Nessuna sezione trovata.</div>`;
   return `<div class="muted" style="font-size:.8rem">${L.length} sezioni</div>`+L.slice(0,n).map(r=>ruleItem(r,false)).join("")+(L.length>n?`<button class="btn sm ghost" data-a="rl-more">Mostra altre (${L.length-n})</button>`:"")}
@@ -1509,7 +1533,9 @@ const A={
     f.used=i<left?f.used+1:Math.max(0,f.used-1)},
   slot:b=>{const s=ch().slots[b.dataset.v];const left=s.max-s.used;s.used=Number(b.dataset.i)<left?s.used+1:Math.max(0,s.used-1)},
   "reset-slots":()=>{const c=ch();for(let i=1;i<=9;i++)c.slots[i].used=0},
-  "upd-slots":()=>{const c=ch();for(let i=1;i<=9;i++){const q=$("#"+fid(`c.slots.${i}.max`));if(q)c.slots[i].max=Math.max(0,Math.min(9,Number(q.value)||0));c.slots[i].used=Math.min(Number(c.slots[i].used)||0,c.slots[i].max)}toast("Slot aggiornati")},
+  "sp-refresh":()=>{applySlotMax();if(!SPELLDB){spellErr=false;loadSpells()}else{SPELLDB=packSpells(SPELL_SRD||[]);upgradeMySpells()}
+    const c=ch();c.spells.sort((a,b)=>(Number(a.level)||0)-(Number(b.level)||0)||String(a.name||"").localeCompare(String(b.name||""),"it"));touch();toast("Elenco incantesimi aggiornato")},
+  "upd-slots":()=>{applySlotMax();toast("Slot aggiornati")},
   "only-prep":b=>{UI.onlyPrepared=b.checked;render();return "noRender"},
   cast:(b,e)=>{e.preventDefault();const c=ch(),s=c.spells.find(x=>x.id===b.dataset.id);const lv=Number(s.level);
     if(lv===0){afterCast(c,s,0);return}
@@ -1536,6 +1562,7 @@ const A={
   "add-obj":b=>{const q=camp().quests.find(x=>x.id===b.dataset.q);const o={id:uid(),text:"",done:false};q.objectives.push(o);setTimeout(()=>{const el=$("#"+fid(`k.quests#${q.id}.objectives#${o.id}.text`));if(el)el.focus()},50)},
   "del-obj":b=>{const q=camp().quests.find(x=>x.id===b.dataset.q);q.objectives=q.objectives.filter(o=>o.id!==b.dataset.id)},
   more:()=>{modal(`<h2>Dove vuoi andare?</h2><div class="more">${[["home","Home"],...TABS.filter(([id])=>MODE_TABS.char.includes(id))].map(([id,l])=>`<button data-a="tab-go" data-v="${id}" aria-current="${UI.tab===id}"><span class="ic" aria-hidden="true">${TAB_IC[id]}</span><b>${l}</b><small>${TAB_DESC[id]}</small></button>`).join("")}</div><div><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
+  "rules-for":b=>{const L=rulesFor(b.dataset.v);modal(`<div class="card-h"><h2 style="margin:0">${esc(b.dataset.v)}</h2><button class="btn ghost" data-a="modal-close" aria-label="Chiudi">✕</button></div><div class="list">${L.slice(0,30).map((r,i)=>ruleItem(r,i===0)).join("")}</div><div><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
   "tab-go":b=>{closeModal();UI.tab=b.dataset.v;window.scrollTo({top:0})},
   give:b=>{const c=ch();const it=c.inv.find(x=>x.id===b.dataset.id);if(!it)return "noRender";const others=camp().chars.filter(x=>x.id!==c.id);const q=Math.max(1,Number(it.qty)||1);
     modal(`<h2>Dai ${esc(it.name||"oggetto")}</h2>
@@ -1619,8 +1646,9 @@ function cmbHp(id,sign){const e=camp().combat.list.find(x=>x.id===id);const n=nu
 
 /* ============ salita di livello ============ */
 const FULL_SLOTS=[[],[2],[3],[4,2],[4,3],[4,3,2],[4,3,3],[4,3,3,1],[4,3,3,2],[4,3,3,3,1],[4,3,3,3,2],[4,3,3,3,2,1],[4,3,3,3,2,1],[4,3,3,3,2,1,1],[4,3,3,3,2,1,1],[4,3,3,3,2,1,1,1],[4,3,3,3,2,1,1,1],[4,3,3,3,2,1,1,1,1],[4,3,3,3,3,1,1,1,1],[4,3,3,3,3,2,1,1,1],[4,3,3,3,3,2,2,1,1]];
-function slotTable(kind,lvl){if(kind==="full")return FULL_SLOTS[lvl]||[];if(kind==="half")return lvl<2?[]:FULL_SLOTS[Math.ceil(lvl/2)]||[];if(kind==="third")return lvl<3?[]:FULL_SLOTS[Math.ceil(lvl/3)]||[];return null}
-function guessCaster(cls){const s=(cls||"").toLowerCase();
+function slotTable(kind,lvl){if(kind==="full")return FULL_SLOTS[lvl]||[];if(kind==="half")return lvl<2?[]:FULL_SLOTS[Math.ceil(lvl/2)]||[];if(kind==="halfup")return FULL_SLOTS[Math.ceil(lvl/2)]||[];if(kind==="third")return lvl<3?[]:FULL_SLOTS[Math.ceil(lvl/3)]||[];return null}
+function applySlotMax(){const c=ch();for(let i=1;i<=9;i++){const q=$("#"+fid(`c.slots.${i}.max`));if(q)c.slots[i].max=Math.max(0,Math.min(9,Number(q.value)||0));c.slots[i].used=Math.min(Number(c.slots[i].used)||0,c.slots[i].max)}}
+function guessCaster(cls){const d=CLASS_DATA[(cls||"").trim()];if(d&&d.caster)return d.caster;const s=(cls||"").toLowerCase();
   if(/mago|chierico|druido|bardo|stregone|wizard|cleric|druid|bard|sorcerer/.test(s))return"full";
   if(/paladino|ranger|paladin/.test(s))return"half";
   if(/cavaliere mistico|mistificatore arcano|eldritch|arcane trickster/.test(s))return"third";return"none"}
@@ -1655,7 +1683,7 @@ function levelUpModal(){
 
   <div class="lu-sec"><h3><span class="n">5</span>Slot incantesimo</h3>
     <label class="row" style="gap:6px"><span class="lbl">Tabella</span><select id="lu-table" data-a="lu-table" style="width:auto">
-      ${[["none","Lascia come sono"],["full","Incantatore completo (Bardo, Chierico, Druido, Mago, Stregone)"],["half","Mezzo incantatore (Paladino, Ranger)"],["third","Un terzo (Cavaliere Mistico, Mistificatore Arcano)"]].map(([k,l])=>`<option value="${k}" ${k===kind?"selected":""}>${l}</option>`).join("")}</select></label>
+      ${[["none","Lascia come sono"],["full","Incantatore completo (Bardo, Chierico, Druido, Mago, Stregone)"],["half","Mezzo incantatore (Paladino, Ranger)"],["third","Un terzo (Cavaliere Mistico, Mistificatore Arcano)"],["halfup","Mezzo incantatore arrotondato per eccesso (es. Artefice)"]].map(([k,l])=>`<option value="${k}" ${k===kind?"selected":""}>${l}</option>`).join("")}</select></label>
     <div class="slotgrid">${[1,2,3,4,5,6,7,8,9].map(l=>`<label class="f"><span class="lbl">${l}°</span><input type="number" inputmode="numeric" min="0" id="lu-slot-${l}" value="${c.slots[l].max}"></label>`).join("")}</div>
     <span class="muted" style="font-size:.8rem">Per il Warlock (magia del patto) imposta i valori a mano.</span></div>
 
@@ -1792,7 +1820,7 @@ $("#file-import").addEventListener("change",async e=>{
 /* ============ avvio ============ */
 /* ============ codice di accesso (solo sito, cancello di cortesia) ============ */
 async function accHash(code){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(window.ACCESS.salt+":"+code));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
-function boot(){load();render();loadSpells();packsLoad();}
+function boot(){load();try{const u=JSON.parse(sessionStorage.getItem("ddf-tab")||"null");if(u&&TABS.concat(LIB_TABS.map(x=>[x])).some(([id])=>id===u.t)){UI.tab=u.t;if(u.m)UI.mode=u.m;if(u.v)UI.spellView=u.v}}catch(e){}render();loadSpells();packsLoad();}
 (function(){const A=window.ACCESS;if(!A||!A.hash||!(window.crypto&&crypto.subtle)||ls.get("ddf-access")===A.hash){boot();return}
   const g=document.createElement("div");g.id="gate";g.setAttribute("role","dialog");g.setAttribute("aria-modal","true");
   g.style.cssText="position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:16px;background:#12141C;color:#f3ead8;font:16px system-ui,sans-serif";
