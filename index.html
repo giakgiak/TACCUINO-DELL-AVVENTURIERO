@@ -330,6 +330,7 @@ body.no-nav .tabs,body.no-nav .bnav{display:none!important}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 .lu-row.linked .ls-name{box-shadow:inset 4px 0 0 #4F8D3B}
 .sez-nav{display:flex;gap:6px;overflow-x:auto;padding:6px 0;background:var(--bg,inherit)}.sez-nav .chip{white-space:nowrap}.sez{display:grid;gap:inherit;scroll-margin-top:56px}.sez-h{margin:14px 0 0;font-size:1.15rem;display:flex;gap:8px;align-items:center}#sez-sch{scroll-margin-top:56px}
+#toast{pointer-events:none}
 </style>
 
 <div class="top">
@@ -991,7 +992,7 @@ function vMagie(){
         ${Number(s.level)>0?`<input type="checkbox" title="Preparato" aria-label="Preparato" data-b="c.spells#${s.id}.prepared" id="${fid("c.spells#"+s.id+".prepared")}" ${s.prepared?"checked":""}>`:""}
         <span class="t tt"><span data-live="sumtitle:c.spells#${s.id}.name">${esc(s.name||"Senza nome")}</span>${s.brief?`<small>${esc(s.brief)}</small>`:""}</span>${s.conc?`<span class="tag gold">C</span>`:""}${s.ritual?`<span class="tag">R</span>`:""}
         ${s.dmg?`<button class="btn sm ghost" data-a="r-spell" data-id="${s.id}">${esc(s.dmg)}</button>`:""}<button class="btn sm" data-a="cast" data-id="${s.id}">Lancia</button></summary>
-      <div class="body">${spellCard(mySpellView(s),{noBrief:1,trMine:s.srd&&!s.tr?s.id:null})}
+      <div class="body">${spellCard(mySpellView(s),{noBrief:1,trMine:s.srd&&!s.tr?s.id:null})}<div><button class="btn sm danger" data-a="sp-remove" data-id="${s.id}">✕ Togli dai miei incantesimi</button></div>
         <details class="it" data-id="ed-${s.id}" ${isOpen("ed-"+s.id)}><summary><span class="t">Modifica</span></summary><div class="body">
         <div class="fields">${fld("Nome",inp(`c.spells#${s.id}.name`))}${fld("Livello",sel(`c.spells#${s.id}.level`,[0,1,2,3,4,5,6,7,8,9].map(i=>[i,i===0?"Trucchetto":i]),{num:1}))}${fld("Scuola",sel(`c.spells#${s.id}.school`,SCHOOLS.map(x=>[x,x||"—"])))}
         ${fld("Tempo di lancio",inp(`c.spells#${s.id}.time`))}${fld("Gittata",inp(`c.spells#${s.id}.range`))}${fld("Componenti",inp(`c.spells#${s.id}.comp`))}${fld("Materiali",inp(`c.spells#${s.id}.material`))}${fld("Durata",inp(`c.spells#${s.id}.duration`))}${fld("Danni / cura",inp(`c.spells#${s.id}.dmg`,{ph:"es. 8d6"}))}
@@ -1034,7 +1035,7 @@ function vCompendio(){
       <label class="f"><span class="lbl">Livello</span><select id="comp-lvl"><option value="">Tutti</option>${[0,1,2,3,4,5,6,7,8,9].map(i=>`<option value="${i}" ${String(i)===String(f.lvl)?"selected":""}>${i===0?"Trucchetti":i+"°"}</option>`).join("")}</select></label>
       <label class="f"><span class="lbl">Scuola</span><select id="comp-sch"><option value="">Tutte</option>${SCHOOLS.filter(Boolean).map(k=>`<option ${k===f.sch?"selected":""}>${k}</option>`).join("")}</select></label>
     </div>
-    <div class="row"><label class="row" style="gap:6px;font-size:.85rem"><input type="checkbox" id="comp-conc" ${f.conc?"checked":""}> Concentrazione</label><label class="row" style="gap:6px;font-size:.85rem"><input type="checkbox" id="comp-rit" ${f.rit?"checked":""}> Rituale</label></div>
+    <div class="row"><label class="row" style="gap:6px;font-size:.85rem"><input type="checkbox" id="comp-conc" ${f.conc?"checked":""}> Concentrazione</label><label class="row" style="gap:6px;font-size:.85rem"><input type="checkbox" id="comp-rit" ${f.rit?"checked":""}> Rituale</label><button class="btn sm pri" data-a="comp-refresh" title="Applica i filtri">⟳ Aggiorna</button><button class="btn sm ghost" data-a="comp-reset">Azzera filtri</button></div>
     <div id="comp-results">${compResults()}</div>
     <p class="muted" style="margin:0;font-size:.72rem">Contiene materiale tratto dal System Reference Document 5.1 di Wizards of the Coast LLC, con licenza CC-BY-4.0, tradotto in italiano. Distanze convertite in metri.</p>
   </section>`;
@@ -1043,13 +1044,15 @@ function compResults(){
   const c=UI.tab==="libro"?null:ch();const list=compFiltered();const shown=list.slice(0,UI.comp.limit);const mine=new Set(c?c.spells.map(s=>s.srd).filter(Boolean):[]);
   return `<div class="list">${shown.map(o=>{const v=dbView(o);const id="cp-"+o.i;return `<details class="it" data-id="${id}" ${isOpen(id)}><summary>
       <span class="tag num">${o.l===0?"T":o.l+"°"}</span><span class="t tt"><span>${esc(v.name)}</span>${v.brief||o.fo?`<small>${o.fo?"📦 "+esc(o.fo)+(v.brief?" · ":""):""}${esc(v.brief||"")}</small>`:""}</span>${o.k?`<span class="tag gold">C</span>`:""}${o.ri?`<span class="tag">R</span>`:""}
-      ${!c?"":mine.has(o.i)?`<span class="tag acc">✓ nel libro</span>`:`<button class="btn sm" data-a="sp-learn" data-i="${o.i}">Aggiungi</button>`}</summary>
+      ${!c?"":mine.has(o.i)?`<button class="btn sm ghost" data-a="sp-unlearn" data-i="${o.i}" title="Togli dai miei incantesimi">✓ nel libro · Togli</button>`:`<button class="btn sm" data-a="sp-learn" data-i="${o.i}">Aggiungi</button>`}</summary>
     <div class="body">${spellCard(v,{noBrief:1})}</div></details>`}).join("")||`<div class="empty">Nessun incantesimo con questi filtri.</div>`}</div>
     ${list.length>shown.length?`<div style="margin-top:8px"><button class="btn sm" data-a="comp-more">Mostra altri (${list.length-shown.length})</button></div>`:`<div class="muted" style="font-size:.8rem;margin-top:6px">${list.length} incantesimi</div>`}`;
 }
 function rerenderComp(){const el=$("#comp-results");if(!el)return;el.innerHTML=compResults();el.querySelectorAll("details[data-id]").forEach(d=>d.addEventListener("toggle",()=>{d.open?UI.open.add(d.dataset.id):UI.open.delete(d.dataset.id)}))}
 const COMP_IDS={"comp-q":"q","comp-cls":"cls","comp-lvl":"lvl","comp-sch":"sch","comp-conc":"conc","comp-rit":"rit"};
-document.addEventListener("input",e=>{const k=COMP_IDS[e.target.id];if(!k)return;UI.comp[k]=e.target.type==="checkbox"?e.target.checked:e.target.value;UI.comp.limit=50;rerenderComp()});
+const compFilt=e=>{const k=COMP_IDS[e.target.id];if(!k)return;const v=e.target.type==="checkbox"?e.target.checked:e.target.value;if(e.type==="change"&&UI.comp[k]===v)return;UI.comp[k]=v;UI.comp.limit=50;rerenderComp()};
+document.addEventListener("input",compFilt);document.addEventListener("change",compFilt); // alcuni telefoni segnalano i menu solo con "change"
+function readCompFilters(){for(const id in COMP_IDS){const el=document.getElementById(id);if(el)UI.comp[COMP_IDS[id]]=el.type==="checkbox"?el.checked:el.value}UI.comp.limit=50}
 let SAMPLE=(window.claude&&window.claude.use)?null:false;
 async function getSample(){if(SAMPLE)return SAMPLE;if(SAMPLE===false||!window.claude||!claude.use){SAMPLE=false;return null}try{SAMPLE=(await claude.use("sample"))||false}catch(e){SAMPLE=false}return SAMPLE||null}
 
@@ -1768,6 +1771,9 @@ document.addEventListener("input",e=>{const t=e.target;if(!t.classList||!t.class
 document.addEventListener("change",e=>{if(e.target.id==="lu-table"){const N=(Number(ch().level)||1)+1;if(e.target.value==="none"){const c=ch();for(let l=1;l<=9;l++)$("#lu-slot-"+l).value=c.slots[l].max}else luFillTable(e.target.value,N)}});
 Object.assign(A,{
   levelup:()=>{levelUpModal();return "noRender"},
+  "sp-remove":b=>{const c=ch();const s=c.spells.find(x=>x.id===b.dataset.id);if(!s)return "noRender";confirmBox(`Togliere <b>${esc(s.name)}</b> dai tuoi incantesimi?${s.srd?" Puoi sempre riaggiungerlo dal compendio.":""}`,"Togli",()=>{c.spells=c.spells.filter(x=>x!==s);if(c.concentration&&c.concentration===s.name)c.concentration="";toast(`${esc(s.name)} tolto dai tuoi incantesimi.`)});return "noRender"},
+  "sp-unlearn":(b,e)=>{e&&e.preventDefault();const c=ch();const s=c.spells.find(x=>x.srd===b.dataset.i);if(!s)return "noRender";c.spells=c.spells.filter(x=>x!==s);toast(`${esc(s.name)} tolto dai tuoi incantesimi.`);touch();rerenderComp();
+    const sb=document.querySelector('[data-a="sp-view"][data-v="mine"]');if(sb)sb.textContent=`I miei incantesimi (${c.spells.length})`;return "noRender"},
   "goto-sez":b=>{const e=document.getElementById(b.dataset.v);if(e)e.scrollIntoView({behavior:"smooth",block:"start"});return "noRender"},
   "sp-add":()=>{const c=ch();modal(`<h2>Aggiungi incantesimo</h2><p class="muted" style="margin:0;font-size:.85rem">Scrivi il nome e sceglilo dall'elenco: tutti i dati (gittata, durata, danni, descrizione) arrivano dal compendio.</p>
     <datalist id="dl-spells">${spellOptions(c)}</datalist><input id="spa-name" list="dl-spells" autocomplete="off" placeholder="es. Palla di Fuoco"><div id="spa-info" class="muted" style="font-size:.85rem;min-height:1.2em"></div>
@@ -1777,6 +1783,8 @@ Object.assign(A,{
     const sp=spellFromDb(o,c);c.spells.push(sp);UI.open.add(sp.id);closeModal();toast(`${esc(sp.name)} aggiunto ai tuoi incantesimi.`)},
   "spa-custom":()=>{const n=$("#spa-name").value.trim();closeModal();const it=NEW.spells();if(n)it.name=n;ch().spells.push(it);UI.open.add(it.id);UI.open.add("ed-"+it.id)},
   "sp-view":b=>{UI.spellView=b.dataset.v;render();return "noRender"},
+  "comp-refresh":()=>{readCompFilters();rerenderComp();const n=compFiltered().length;toast(`${n} incantesim${n===1?"o":"i"} trovat${n===1?"o":"i"}`);return "noRender"},
+  "comp-reset":()=>{Object.assign(UI.comp,{q:"",cls:"",lvl:"",sch:"",conc:false,rit:false,limit:50});renderView();return "noRender"},
   "comp-more":()=>{UI.comp.limit+=50;rerenderComp();return "noRender"},
   "sp-learn":(b,e)=>{e.preventDefault();const o=SPELLDB.find(x=>x.i===b.dataset.i);const c=ch();const v=dbView(o);
     c.spells.push(spellFromDb(o,c));
