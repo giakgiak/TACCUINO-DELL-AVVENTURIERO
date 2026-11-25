@@ -1644,7 +1644,7 @@ const A={
   "share-send":()=>{const k=camp();const url=shareLink(k.share.code);if(navigator.share)navigator.share({title:k.name,text:`Unisciti alla campagna "${k.name}" sul Taccuino dell'Avventuriero (codice ${k.share.code})`,url}).catch(()=>{});else{(navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(()=>toast("Link copiato: incollalo nel gruppo."),()=>toast("Copia il link dal campo qui sopra."))}return "noRender"},
   // menu
   menu:()=>{modal(`<h2>Gestione</h2>
-    <div class="f"><span class="lbl">Personaggi</span><div class="row"><button class="btn" data-a="new-char">Nuovo personaggio</button><button class="btn" data-a="send-char" ${ch()?"":"disabled"}>Invia scheda al Master</button><button class="btn danger" data-a="del-char" ${ch()?"":"disabled"}>Elimina personaggio attuale</button></div></div>
+    <div class="f"><span class="lbl">Personaggi</span><div class="row"><button class="btn" data-a="new-char">Nuovo personaggio</button><button class="btn" data-a="mv-char" ${ch()&&S.campaigns.length>1?"":"disabled"}>Manda a una campagna</button><button class="btn" data-a="send-char" ${ch()?"":"disabled"}>Invia scheda al Master</button><button class="btn danger" data-a="del-char" ${ch()?"":"disabled"}>Elimina personaggio attuale</button></div></div>
     <div class="f"><span class="lbl">Campagne</span><div class="row"><button class="btn" data-a="new-camp">Nuova campagna</button><button class="btn" data-a="ren-camp">Rinomina campagna</button><button class="btn danger" data-a="del-camp">Elimina campagna</button></div></div>
     ${fbEnabled()?`<div class="f"><span class="lbl">Online</span><div class="row"><button class="btn pri" data-a="share-camp">${shareCode(camp())?"Codice della campagna":"Condividi campagna online"}</button><button class="btn" data-a="join">Entra con un codice</button></div></div>`:""}
     <div class="f"><span class="lbl">Backup</span><div class="row"><button class="btn" data-a="export">Esporta tutto (JSON)</button><button class="btn" data-a="import">Importa backup</button></div>
@@ -1652,15 +1652,33 @@ const A={
     <div><button class="btn ghost" data-a="modal-close">Chiudi</button></div>`);return "noRender"},
   "new-char":()=>{modal(`<h2>Nuovo personaggio</h2><input id="nc-name" placeholder="Nome del personaggio"><div class="row"><button class="btn pri" data-a="nc-ok">Crea</button><button class="btn ghost" data-a="modal-close">Annulla</button></div>`);return "noRender"},
   "nc-ok":()=>{const k=camp();const c=newChar($("#nc-name").value.trim()||"Nuovo eroe");k.chars.push(c);k.activeChar=c.id;closeModal();UI.tab="scheda"},
+  "mv-char":()=>{const c=ch(),k=camp();if(!c)return "noRender";const others=S.campaigns.filter(x=>x.id!==k.id);
+    if(!others.length){toast("Non ci sono altre campagne: creane una dal menu.");return "noRender"}
+    modal(`<h2>Manda <b>${esc(c.name)}</b> a una campagna</h2>
+      <div class="chips" role="radiogroup"><label class="chip" style="display:inline-flex;align-items:center;gap:6px"><input type="radio" name="mv-mode" value="move" checked style="width:auto;margin:0"><span>Sposta (lo tolgo da qui)</span></label><label class="chip" style="display:inline-flex;align-items:center;gap:6px"><input type="radio" name="mv-mode" value="copy" style="width:auto;margin:0"><span>Copia (resta anche qui)</span></label></div>
+      <p class="muted" style="margin:0">Scegli la campagna:</p>
+      <div class="list">${others.map(o=>`<button class="btn" style="width:100%;justify-content:space-between;display:flex" data-a="mv-ok" data-k="${o.id}"><span>${esc(o.name)}</span><span class="muted">${o.chars.length} PG</span></button>`).join("")}</div>
+      <div><button class="btn ghost" data-a="modal-close">Annulla</button></div>`);return "noRender"},
+  "mv-ok":b=>{const k=camp(),c=ch(),to=S.campaigns.find(x=>x.id===b.dataset.k);if(!c||!to)return closeModal();
+    const copy=($('input[name="mv-mode"]:checked')||{}).value==="copy";
+    const n=copy?Object.assign(JSON.parse(JSON.stringify(c)),{id:uid()}):c;
+    if(!copy&&to.chars.some(x=>x.id===n.id))n.id=uid();
+    to.chars.push(n);to.activeChar=n.id;to.updatedAt=Date.now();
+    if(!copy){k.chars=k.chars.filter(x=>x.id!==c.id);k.combat.list=k.combat.list.filter(e=>e.charId!==c.id);k.activeChar=k.chars[0]?k.chars[0].id:null}
+    S.active=to.id;UI.tab="scheda";closeModal();toast(`<b>${esc(n.name)}</b> ${copy?"copiato in":"spostato in"} <b>${esc(to.name)}</b>.`)},
   "del-char":()=>{const c=ch();confirmBox(`Eliminare <b>${esc(c.name)}</b> e tutta la sua scheda? Non si può annullare.`,"Elimina",()=>{const k=camp();k.chars=k.chars.filter(x=>x.id!==c.id);k.combat.list=k.combat.list.filter(e=>e.charId!==c.id);k.activeChar=k.chars[0]?k.chars[0].id:null});return "noRender"},
   "new-camp":()=>{modal(`<h2>Nuova campagna</h2><input id="ncp-name" placeholder="Nome della campagna"><div class="row"><button class="btn pri" data-a="ncp-ok">Crea</button><button class="btn ghost" data-a="modal-close">Annulla</button></div>`);return "noRender"},
   "ncp-ok":()=>{const k=newCamp($("#ncp-name").value.trim()||"Nuova campagna");S.campaigns.push(k);S.active=k.id;closeModal()},
   "ren-camp":()=>{modal(`<h2>Rinomina campagna</h2><input id="rc-name" value="${esc(camp().name)}"><div class="row"><button class="btn pri" data-a="rc-ok">Salva</button><button class="btn ghost" data-a="modal-close">Annulla</button></div>`);return "noRender"},
   "rc-ok":()=>{camp().name=$("#rc-name").value.trim()||camp().name;delete camp().__demo;closeModal()},
-  "del-camp":()=>{const k=camp();const code=shareCode(k)&&FB?shareCode(k):null;confirmBox(`Eliminare la campagna <b>${esc(k.name)}</b> con tutti i personaggi, le missioni e il diario?${code?" Sparisce <b>per tutti</b>, su ogni dispositivo.":""} Non si può annullare.`,"Elimina",()=>{
+  "del-camp":()=>{if(!S.campaigns.length)return "noRender";const cur=camp();
+    modal(`<h2>🗑 Elimina campagna</h2><label class="f"><span class="lbl">Quale campagna vuoi eliminare?</span><select id="dc-sel">${S.campaigns.map(x=>`<option value="${x.id}" ${cur&&x.id===cur.id?"selected":""}>${esc(x.name)} (${x.chars.length} PG)</option>`).join("")}</select></label>
+      <div class="row" style="justify-content:flex-end"><button class="btn" data-a="modal-close">Annulla</button><button class="btn danger" data-a="dc-next">Continua</button></div>`);return "noRender"},
+  "dc-next":()=>{const k=S.campaigns.find(x=>x.id===$("#dc-sel").value);if(!k)return closeModal();const code=shareCode(k)&&FB?shareCode(k):null;
+    confirmBox(`Ultima conferma: eliminare la campagna <b>${esc(k.name)}</b> con ${k.chars.length} personagg${k.chars.length===1?"io":"i"}, le missioni e il diario?${code?" Sparisce <b>per tutti</b>, su ogni dispositivo.":""} Non si può annullare.`,"Elimina definitivamente",()=>{
     if(code){const {fs}=FB;const j=JSON.stringify({code,name:k.name,del:true});IDXSYNC[code]=j;fs.setDoc(fs.doc(pgCol(IDX),idxKey(code)),{json:j,updatedAt:Date.now(),by:CLIENT}).catch(shareErr);
       for(const c of k.chars)fs.deleteDoc(fs.doc(pgCol(code),c.id)).catch(()=>{});if(LIVE_SUBS[code]){LIVE_SUBS[code]();delete LIVE_SUBS[code]}delete fbSynced[code]}
-    S.campaigns=S.campaigns.filter(x=>x.id!==k.id);pendingDel.add(k.id);S.active=S.campaigns[0]?S.campaigns[0].id:null});return "noRender"},
+    S.campaigns=S.campaigns.filter(x=>x.id!==k.id);pendingDel.add(k.id);if(S.active===k.id){S.active=S.campaigns[0]?S.campaigns[0].id:null;UI.tab="home"}toast(`Campagna <b>${esc(k.name)}</b> eliminata.`)});return "noRender"},
   export:()=>{doExport();return "noRender"},
   import:()=>{$("#file-import").click();return "noRender"},
   "imp-replace":()=>{const d=pendingImport;pendingImport=null;S.campaigns.forEach(k=>pendingDel.add(k.id));S.campaigns=d;S.active=d[0].id;migrate();d.forEach(k=>pendingDel.delete(k.id));closeModal();toast("Backup importato.")},
