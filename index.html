@@ -328,6 +328,7 @@ body.no-nav .tabs,body.no-nav .bnav{display:none!important}
 .slotgrid input{padding:4px 2px;text-align:center}
 @media (max-width:480px){.slotgrid{grid-template-columns:repeat(5,minmax(0,1fr))}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.lu-row.linked .ls-name{box-shadow:inset 4px 0 0 #4F8D3B}
 </style>
 
 <div class="top">
@@ -441,6 +442,7 @@ function choice(path,opts){
 function applyClass(c){const d=CLASS_DATA[c.cls];if(!d)return;const done=[];
   if(Number(c.hitDie)!==d.hd){c.hitDie=d.hd;done.push(`dado vita d${d.hd}`)}
   if(d.sa&&c.spellAbility!==d.sa){c.spellAbility=d.sa;done.push(`incantesimi con ${AB_FULL[d.sa]}`)}
+  if(syncCasting(c,true))done.push("slot incantesimo");
   if(!AB.some(a=>c.saves[a])){d.saves.forEach(a=>c.saves[a]=true);done.push(`TS di ${d.saves.map(a=>AB_FULL[a]).join(" e ")}`)}
   if(c.subclass&&!d.subs.includes(c.subclass))c.subclass="";
   if(done.length)toast(`<div>${esc(c.cls)}</div><div style="font-size:.85rem">Impostati: ${esc(done.join(", "))}</div>`,4000)}
@@ -712,6 +714,7 @@ document.addEventListener("input",e=>{
   let v=el.type==="checkbox"?el.checked:el.value;
   if(el.dataset.n!==undefined&&el.type!=="checkbox"){v=v===""?0:Number(v);if(Number.isNaN(v))return}
   setv(el.dataset.b,v);touch();refreshLive();
+  if(el.dataset.b==="c.level"){clearTimeout(UI.lvT);UI.lvT=setTimeout(()=>{const c=ch();if(c&&Number(c.level)>=1&&syncCasting(c)){touch()}},700)}
   if(el.tagName==="SELECT"||el.type==="checkbox")render();
 });
 
@@ -828,6 +831,14 @@ function renderView(){
 const isOpen=id=>UI.open.has(id)?"open":"";
 
 /* ---- Scheda ---- */
+function vSchedaMagia(c){const kind=guessCaster(c.cls);const sl=slotsLeft(c);if(!c.spells.length&&!sl.length&&kind==="none"&&!(CLASS_DATA[c.cls]&&CLASS_DATA[c.cls].sa))return "";
+  const prep=c.spells.filter(s=>s.prepared&&Number(s.level)>0).length,can=c.spells.filter(s=>Number(s.level)===0).length;
+  return `<section class="card"><div class="card-h"><h2>Magia</h2><button class="btn sm" data-a="tab" data-v="magie">Apri Magie →</button></div>
+    <div class="stats"><div class="stat"><span class="lbl">Caratteristica</span>${sel("c.spellAbility",AB.map(a=>[a,a]))}</div>
+      <div class="stat"><span class="lbl">CD tiro salvezza</span><span class="v" data-live="dc">${spellDC(c)}</span></div>
+      <div class="stat"><span class="lbl">Attacco magico</span><span class="v" data-live="satk">${sgn(spellAtk(c))}</span></div>
+      <div class="stat"><span class="lbl">Incantesimi</span><span class="v" style="font-size:.95rem">${can} trucch. · ${prep} prep.</span></div></div>
+    <div class="muted" style="font-size:.85rem">Slot: ${sl.length?esc(sl.join(" · ")):"nessuno"}${kind!=="none"?" · si aggiornano da soli quando cambi classe o livello":""}</div></section>`}
 function vScheda(){
   const c=ch();const dead=c.hp.cur===0;
   return `
@@ -862,6 +873,7 @@ function vScheda(){
     </div>
   </section>
 
+  ${vSchedaMagia(c)}
   <section class="card">
     <div class="card-h"><h2>Caratteristiche</h2><span class="muted" style="font-size:.8rem">Tocca il modificatore per tirare</span></div>
     <div class="abil">${AB.map(a=>{const t=Number(c.abTemp[a])||0;return `<div class="ab"><span class="lbl" title="${AB_FULL[a]}">${a}</span><button class="mod" data-a="r-ab" data-v="${a}" data-live="mod:${a}">${sgn(amod(c,a))}</button>
@@ -969,7 +981,7 @@ function vMagie(){
   </section>
   <div class="seg" role="tablist" style="justify-self:start"><button class="${UI.spellView!=="comp"?"on":""}" data-a="sp-view" data-v="mine">I miei incantesimi (${c.spells.length})</button><button class="${UI.spellView==="comp"?"on":""}" data-a="sp-view" data-v="comp">Compendio SRD</button></div>
   ${UI.spellView==="comp"?vCompendio():`<section class="card">
-    <div class="card-h"><h2>I miei incantesimi</h2><div class="row"><label class="row" style="gap:6px;font-size:.85rem"><input type="checkbox" id="only-prep" data-a="only-prep" ${UI.onlyPrepared?"checked":""}> Solo preparati</label><button class="btn sm" data-a="sp-refresh" title="Aggiorna l'elenco senza ricaricare la pagina">⟳ Aggiorna</button><button class="btn sm" data-a="sp-view" data-v="comp">Cerca nel compendio</button><button class="btn sm pri" data-a="add" data-l="spells">+ Personalizzato</button></div></div>
+    <div class="card-h"><h2>I miei incantesimi</h2><div class="row"><label class="row" style="gap:6px;font-size:.85rem"><input type="checkbox" id="only-prep" data-a="only-prep" ${UI.onlyPrepared?"checked":""}> Solo preparati</label><button class="btn sm" data-a="sp-refresh" title="Aggiorna l'elenco senza ricaricare la pagina">⟳ Aggiorna</button><button class="btn sm" data-a="sp-view" data-v="comp">Cerca nel compendio</button><button class="btn sm pri" data-a="sp-add">+ Aggiungi incantesimo</button></div></div>
     ${Object.keys(byL).sort((a,b)=>a-b).map(l=>`<div class="list"><h3>${lvName(l)} ${Number(l)>0?`<span class="tag num">${c.slots[l].max-c.slots[l].used}/${c.slots[l].max} slot</span>`:""}</h3>${byL[l].map(s=>`<details class="it" data-id="${s.id}" ${isOpen(s.id)}><summary>
         ${Number(s.level)>0?`<input type="checkbox" title="Preparato" aria-label="Preparato" data-b="c.spells#${s.id}.prepared" id="${fid("c.spells#"+s.id+".prepared")}" ${s.prepared?"checked":""}>`:""}
         <span class="t tt"><span data-live="sumtitle:c.spells#${s.id}.name">${esc(s.name||"Senza nome")}</span>${s.brief?`<small>${esc(s.brief)}</small>`:""}</span>${s.conc?`<span class="tag gold">C</span>`:""}${s.ritual?`<span class="tag">R</span>`:""}
@@ -1671,12 +1683,29 @@ function cmbHp(id,sign){const e=camp().combat.list.find(x=>x.id===id);const n=nu
 const FULL_SLOTS=[[],[2],[3],[4,2],[4,3],[4,3,2],[4,3,3],[4,3,3,1],[4,3,3,2],[4,3,3,3,1],[4,3,3,3,2],[4,3,3,3,2,1],[4,3,3,3,2,1],[4,3,3,3,2,1,1],[4,3,3,3,2,1,1],[4,3,3,3,2,1,1,1],[4,3,3,3,2,1,1,1],[4,3,3,3,2,1,1,1,1],[4,3,3,3,3,1,1,1,1],[4,3,3,3,3,2,1,1,1],[4,3,3,3,3,2,2,1,1]];
 function slotTable(kind,lvl){if(kind==="full")return FULL_SLOTS[lvl]||[];if(kind==="half")return lvl<2?[]:FULL_SLOTS[Math.ceil(lvl/2)]||[];if(kind==="halfup")return FULL_SLOTS[Math.ceil(lvl/2)]||[];if(kind==="third")return lvl<3?[]:FULL_SLOTS[Math.ceil(lvl/3)]||[];return null}
 function applySlotMax(){const c=ch();for(let i=1;i<=9;i++){const q=$("#"+fid(`c.slots.${i}.max`));if(q)c.slots[i].max=Math.max(0,Math.min(9,Number(q.value)||0));c.slots[i].used=Math.min(Number(c.slots[i].used)||0,c.slots[i].max)}}
+/* ---- dati collegati: incantesimi e privilegi scelti dagli elenchi ---- */
+function spellFromDb(o,c){const v=dbView(o);const m=amod(c,c.spellAbility);const dmg=(v.dmg||"").replace(/\+?MOD/,m?sgn(m):"");
+  return {id:uid(),srd:o.i,tr:v.translated,brief:v.brief,name:v.name,level:o.l,school:o.s,time:o.t,range:o.r,comp:o.c,material:v.material,duration:o.d,conc:v.conc,ritual:v.ritual,prepared:false,dmg,desc:v.desc,higher:v.higher,ts:v.ts,classes:o.cls}}
+const spLvl=l=>Number(l)===0?"trucchetto":"liv. "+l;
+function findSpell(name){if(!SPELLDB)return null;const n=nrm(String(name||"").replace(/\s*\((trucchetto|liv\. \d)\)\s*$/,"")).trim();if(!n)return null;
+  return SPELLDB.find(o=>nrm(dbView(o).name)===n)||SPELLDB.find(o=>nrm(o.n)===n||nrm(o.en||"")===n)||null}
+function spellOptions(c){if(!SPELLDB)return "";const cls=guessClass(c&&c.cls);const L=SPELLDB.map(o=>({o,v:dbView(o)}));
+  L.sort((a,b)=>{const ia=cls&&(a.o.cls||[]).includes(cls)?0:1,ib=cls&&(b.o.cls||[]).includes(cls)?0:1;return ia-ib||a.o.l-b.o.l||a.v.name.localeCompare(b.v.name,"it")});
+  return L.map(({o,v})=>`<option value="${esc(v.name)} (${spLvl(o.l)})"></option>`).join("")}
+function featRules(c){const k=[nrm(c.cls||""),nrm(c.subclass||"")].filter(Boolean);
+  return PACKRULES.filter(r=>{const g=nrm(r.g||""),cc=nrm(r.c||"");return /talent/.test(g)||/talent/.test(cc)||k.some(x=>x&&(g.includes(x)||cc.includes(x)))})}
+function findRule(name,c){const n=nrm(name||"").trim();if(!n)return null;return featRules(c).find(r=>nrm(r.n)===n)||PACKRULES.find(r=>nrm(r.n)===n)||null}
+function featOptions(c){const seen=new Set();return featRules(c).filter(r=>!seen.has(r.n)&&seen.add(r.n)).map(r=>`<option value="${esc(r.n)}">${esc(r.g||r.c||"")}</option>`).join("")}
+/* slot e caratteristica da incantatore seguono classe e livello della scheda */
+function syncCasting(c,quiet){const kind=guessCaster(c.cls);const t=slotTable(kind,Number(c.level)||1);if(!t)return false;let ch=false;
+  for(let l=1;l<=9;l++){const v=t[l-1]||0;if(Number(c.slots[l].max)!==v){c.slots[l].max=v;c.slots[l].used=Math.min(Number(c.slots[l].used)||0,v);ch=true}}
+  if(ch&&!quiet)toast(`Slot incantesimo aggiornati per ${esc(c.cls)} di livello ${c.level}`);return ch}
 function guessCaster(cls){const d=CLASS_DATA[(cls||"").trim()];if(d&&d.caster)return d.caster;const s=(cls||"").toLowerCase();
   if(/mago|chierico|druido|bardo|stregone|wizard|cleric|druid|bard|sorcerer/.test(s))return"full";
   if(/paladino|ranger|paladin/.test(s))return"half";
   if(/cavaliere mistico|mistificatore arcano|eldritch|arcane trickster/.test(s))return"third";return"none"}
-function luFeatRow(){const id=uid();return `<div class="lu-row" data-feat="${id}"><input placeholder="Nome capacità, es. Attacco Extra" class="lf-name"><input type="number" inputmode="numeric" placeholder="Usi" class="lf-max" min="0"><select class="lf-rech rech">${Object.entries(RECH).map(([k,l])=>`<option value="${k}" ${k==="long"?"selected":""}>${l}</option>`).join("")}</select><button class="btn sm ghost" data-a="lu-del-row" aria-label="Rimuovi">✕</button><textarea class="lf-desc" placeholder="Descrizione (facoltativa)"></textarea></div>`}
-function luSpellRow(maxLv){return `<div class="lu-row sp" data-spell="1"><input placeholder="Nome incantesimo" class="ls-name"><select class="ls-lv">${[0,1,2,3,4,5,6,7,8,9].map(i=>`<option value="${i}" ${i===Math.min(1,maxLv)?"selected":""}>${i===0?"Trucchetto":"Livello "+i}</option>`).join("")}</select><button class="btn sm ghost" data-a="lu-del-row" aria-label="Rimuovi">✕</button></div>`}
+function luFeatRow(){const id=uid();return `<div class="lu-row" data-feat="${id}"><input placeholder="Nome capacità, es. Attacco Extra" class="lf-name" list="dl-feats" autocomplete="off"><input type="number" inputmode="numeric" placeholder="Usi" class="lf-max" min="0"><select class="lf-rech rech">${Object.entries(RECH).map(([k,l])=>`<option value="${k}" ${k==="long"?"selected":""}>${l}</option>`).join("")}</select><button class="btn sm ghost" data-a="lu-del-row" aria-label="Rimuovi">✕</button><textarea class="lf-desc" placeholder="Descrizione (facoltativa)"></textarea></div>`}
+function luSpellRow(maxLv){return `<div class="lu-row sp" data-spell="1"><input placeholder="Scrivi e scegli dall'elenco" class="ls-name" list="dl-spells" autocomplete="off"><select class="ls-lv">${[0,1,2,3,4,5,6,7,8,9].map(i=>`<option value="${i}" ${i===Math.min(1,maxLv)?"selected":""}>${i===0?"Trucchetto":"Livello "+i}</option>`).join("")}</select><button class="btn sm ghost" data-a="lu-del-row" aria-label="Rimuovi">✕</button></div>`}
 function levelUpModal(){
   const c=ch();const L=Number(c.level)||1,N=L+1;const con=amod(c,"COS");const avg=Math.max(1,Math.floor(c.hitDie/2)+1+con);
   const asi=[4,8,12,16,19].includes(N);const kind=guessCaster(c.cls);
@@ -1698,7 +1727,7 @@ function levelUpModal(){
   <div class="lu-sec"><h3><span class="n">3</span>Aumento dei punteggi o talento</h3>
     <label class="row" style="gap:6px"><input type="checkbox" id="lu-asi-on" ${asi?"checked":""}> Questo livello dà un aumento${asi?" (livello "+N+")":""}</label>
     <div class="fields"><label class="f"><span class="lbl">+1 a</span><select id="lu-asi1">${abOpts}</select></label><label class="f"><span class="lbl">+1 a (stessa = +2)</span><select id="lu-asi2">${abOpts}</select></label>
-    <label class="f"><span class="lbl">Oppure talento</span><input id="lu-feat" placeholder="es. Robustezza"></label></div></div>
+    <label class="f"><span class="lbl">Oppure talento</span><input id="lu-feat" placeholder="es. Robustezza" list="dl-feats" autocomplete="off"></label></div></div>
 
   <div class="lu-sec"><h3><span class="n">4</span>Nuove capacità di classe</h3>
     <div class="list" id="lu-feats">${luFeatRow()}</div><div><button class="btn sm" data-a="lu-add-feat">+ Altra capacità</button></div>
@@ -1711,7 +1740,7 @@ function levelUpModal(){
     <span class="muted" style="font-size:.8rem">Per il Warlock (magia del patto) imposta i valori a mano.</span></div>
 
   <div class="lu-sec"><h3><span class="n">6</span>Nuovi incantesimi</h3>
-    <div class="list" id="lu-spells">${luSpellRow(9)}</div><div><button class="btn sm" data-a="lu-add-spell">+ Altro incantesimo</button></div>
+    <datalist id="dl-spells">${spellOptions(c)}</datalist><datalist id="dl-feats">${featOptions(c)}</datalist><div class="list" id="lu-spells">${luSpellRow(9)}</div><div><button class="btn sm" data-a="lu-add-spell">+ Altro incantesimo</button></div>
     <span class="muted" style="font-size:.8rem">Dettagli come gittata e durata li completi poi nella scheda Magie.</span></div>
 
   <div class="lu-sec"><h3><span class="n">7</span>Nuove competenze</h3>
@@ -1726,14 +1755,25 @@ function levelUpModal(){
 function luFillTable(kind,N){const t=slotTable(kind,N);if(!t)return;for(let l=1;l<=9;l++){const el=$("#lu-slot-"+l);if(el)el.value=t[l-1]||0}}
 function luHpPreview(){const c=ch();const v=Number($("#lu-hp").value)||0;const el=$("#lu-hp-new");if(el)el.textContent=c.hp.max+v}
 document.addEventListener("input",e=>{if(e.target.id==="lu-hp")luHpPreview()});
+document.addEventListener("input",e=>{if(e.target.id!=="spa-name")return;const o=findSpell(e.target.value);const i=$("#spa-info");if(!i)return;
+  if(o){const v=dbView(o);e.target.value=v.name;i.textContent=`${v.name}: ${o.l?"livello "+o.l:"trucchetto"}, ${v.school||""}${v.brief?" · "+v.brief:""}`}else i.textContent=""});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="spa-name"){e.preventDefault();const r=A["spa-ok"]();if(r!=="noRender"){touch();render()}}});
+document.addEventListener("input",e=>{const t=e.target;if(!t.classList||!t.classList.contains("ls-name"))return;const o=findSpell(t.value);const r=t.closest(".lu-row");
+  if(o){t.value=dbView(o).name;r.querySelector(".ls-lv").value=o.l;r.classList.add("linked");t.title="Collegato al compendio"}else{r.classList.remove("linked");t.title=""}});
 document.addEventListener("change",e=>{if(e.target.id==="lu-table"){const N=(Number(ch().level)||1)+1;if(e.target.value==="none"){const c=ch();for(let l=1;l<=9;l++)$("#lu-slot-"+l).value=c.slots[l].max}else luFillTable(e.target.value,N)}});
 Object.assign(A,{
   levelup:()=>{levelUpModal();return "noRender"},
+  "sp-add":()=>{const c=ch();modal(`<h2>Aggiungi incantesimo</h2><p class="muted" style="margin:0;font-size:.85rem">Scrivi il nome e sceglilo dall'elenco: tutti i dati (gittata, durata, danni, descrizione) arrivano dal compendio.</p>
+    <datalist id="dl-spells">${spellOptions(c)}</datalist><input id="spa-name" list="dl-spells" autocomplete="off" placeholder="es. Palla di Fuoco"><div id="spa-info" class="muted" style="font-size:.85rem;min-height:1.2em"></div>
+    <div class="row"><button class="btn pri" data-a="spa-ok">Aggiungi</button><button class="btn" data-a="spa-custom">Crea personalizzato</button><button class="btn ghost" data-a="modal-close">Annulla</button></div>`);setTimeout(()=>{const i=$("#spa-name");if(i)i.focus()},50);return "noRender"},
+  "spa-ok":()=>{const c=ch();const o=findSpell($("#spa-name").value);if(!o){$("#spa-info").textContent="Non lo trovo nel compendio: sceglilo dall'elenco oppure crea un incantesimo personalizzato.";return "noRender"}
+    if(c.spells.some(x=>x.srd===o.i)){$("#spa-info").textContent="Ce l'hai già tra i tuoi incantesimi.";return "noRender"}
+    const sp=spellFromDb(o,c);c.spells.push(sp);UI.open.add(sp.id);closeModal();toast(`${esc(sp.name)} aggiunto ai tuoi incantesimi.`)},
+  "spa-custom":()=>{const n=$("#spa-name").value.trim();closeModal();const it=NEW.spells();if(n)it.name=n;ch().spells.push(it);UI.open.add(it.id);UI.open.add("ed-"+it.id)},
   "sp-view":b=>{UI.spellView=b.dataset.v;render();return "noRender"},
   "comp-more":()=>{UI.comp.limit+=50;rerenderComp();return "noRender"},
   "sp-learn":(b,e)=>{e.preventDefault();const o=SPELLDB.find(x=>x.i===b.dataset.i);const c=ch();const v=dbView(o);
-    const m=amod(c,c.spellAbility);const dmg=(v.dmg||"").replace(/\+?MOD/,m?sgn(m):"");
-    c.spells.push({id:uid(),srd:o.i,tr:v.translated,brief:v.brief,name:v.name,level:o.l,school:o.s,time:o.t,range:o.r,comp:o.c,material:v.material,duration:o.d,conc:v.conc,ritual:v.ritual,prepared:false,dmg,desc:v.desc,higher:v.higher,ts:v.ts,classes:o.cls});
+    c.spells.push(spellFromDb(o,c));
     toast(`${esc(v.name)} aggiunto ai tuoi incantesimi.`);touch();rerenderComp();
     const sb=document.querySelector('[data-a="sp-view"][data-v="mine"]');if(sb)sb.textContent=`I miei incantesimi (${c.spells.length})`;return "noRender"},
   "sp-tr":async b=>{const sm=await getSample();if(!sm){toast("La traduzione automatica non è disponibile qui.");render();return}
@@ -1760,14 +1800,15 @@ Object.assign(A,{
     c.level=N;
     if($("#lu-asi-on").checked){for(const id of ["#lu-asi1","#lu-asi2"]){const a=$(id).value;if(a){c.ab[a]=Math.min(20,(Number(c.ab[a])||0)+1)}}
       const a1=$("#lu-asi1").value,a2=$("#lu-asi2").value;if(a1||a2)done.push(a1&&a1===a2?`${a1} +2`:[a1,a2].filter(Boolean).map(a=>a+" +1").join(", "));
-      const ft=$("#lu-feat").value.trim();if(ft){c.features.push({id:uid(),name:ft,source:`Talento (liv. ${N})`,max:0,used:0,recharge:"none",desc:""});done.push(`talento ${ft}`)}}
-    document.querySelectorAll("#lu-feats .lu-row").forEach(r=>{const n=r.querySelector(".lf-name").value.trim();if(!n)return;
-      c.features.push({id:uid(),name:n,source:`${c.cls||"Classe"} ${N}`,max:Math.max(0,Number(r.querySelector(".lf-max").value)||0),used:0,recharge:r.querySelector(".lf-rech").value,desc:r.querySelector(".lf-desc").value.trim()});done.push(n)});
+      const ft=$("#lu-feat").value.trim();if(ft){const ru=findRule(ft,c);c.features.push({id:uid(),name:ft,source:`Talento (liv. ${N})`,max:0,used:0,recharge:"none",desc:ru?ru.x:""});done.push(`talento ${ft}`)}}
+    document.querySelectorAll("#lu-feats .lu-row").forEach(r=>{const n=r.querySelector(".lf-name").value.trim();if(!n)return;const ru=findRule(n,c);
+      c.features.push({id:uid(),name:n,source:`${c.cls||"Classe"} ${N}`,max:Math.max(0,Number(r.querySelector(".lf-max").value)||0),used:0,recharge:r.querySelector(".lf-rech").value,desc:r.querySelector(".lf-desc").value.trim()||(ru?ru.x:"")});done.push(n)});
     document.querySelectorAll("[data-lu-uses]").forEach(el=>{const f=c.features.find(x=>x.id===el.dataset.luUses);const v=Math.max(0,Number(el.value)||0);if(f&&v!==Number(f.max)){f.max=v;f.used=Math.min(f.used,v)}});
     let slotCh=false;for(let l=1;l<=9;l++){const v=Math.max(0,Math.min(9,Number($("#lu-slot-"+l).value)||0));if(v!==Number(c.slots[l].max)){slotCh=true;c.slots[l].max=v;c.slots[l].used=Math.min(c.slots[l].used,v)}}
     if(slotCh)done.push("slot aggiornati");
-    let ns=0;document.querySelectorAll("#lu-spells .lu-row").forEach(r=>{const n=r.querySelector(".ls-name").value.trim();if(!n)return;ns++;
-      c.spells.push({id:uid(),name:n,level:Number(r.querySelector(".ls-lv").value),school:"",time:"1 azione",range:"",comp:"",duration:"",conc:false,ritual:false,prepared:false,dmg:"",desc:""})});
+    let ns=0;document.querySelectorAll("#lu-spells .lu-row").forEach(r=>{const n=r.querySelector(".ls-name").value.trim();if(!n)return;ns++;const o=findSpell(n);
+      if(o){if(!c.spells.some(x=>x.srd===o.i))c.spells.push(spellFromDb(o,c))}
+      else c.spells.push({id:uid(),name:n,level:Number(r.querySelector(".ls-lv").value),school:"",time:"1 azione",range:"",comp:"",duration:"",conc:false,ritual:false,prepared:false,dmg:"",desc:""})});
     if(ns)done.push(`${ns} incantesim${ns>1?"i":"o"}`);
     const sk=$("#lu-skill").value;if(sk){c.skills[sk]=Math.min(2,(c.skills[sk]||0)+1);done.push(SKILLS.find(x=>x[0]===sk)[1])}
     const pr=$("#lu-profs").value.trim();if(pr){c.profs=(c.profs?c.profs+", ":"")+pr;done.push(pr)}
